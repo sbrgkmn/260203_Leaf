@@ -61,7 +61,7 @@
         padding-bottom: 8px;
       }
       .tile {
-        width: 260px;
+        width: 400px;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -159,6 +159,13 @@
         </label>
 
         <label class="control">
+          <span>Stop Neg-Neg Edges</span>
+          <div class="control-row">
+            <input id="stopNegNeg" type="checkbox" />
+          </div>
+        </label>
+
+        <label class="control">
           <span>Jitter</span>
           <div class="control-row">
             <input id="jitter" type="checkbox" />
@@ -185,8 +192,8 @@
     </div>
 
     <script>
-      const TILE_SIZE = 260;
-      const PADDING = 18;
+      const TILE_SIZE = 400;
+      const PADDING = 28;
       const EXPORT_SIZE = 640;
       const EXPORT_PADDING = 40;
       const BASE_AXIS_LENGTH = 1;
@@ -202,6 +209,7 @@
         showConstructionPoints: document.getElementById("showConstructionPoints"),
         showConstructionLines: document.getElementById("showConstructionLines"),
         showPolarityPoints: document.getElementById("showPolarityPoints"),
+        stopNegNeg: document.getElementById("stopNegNeg"),
         jitter: document.getElementById("jitter"),
         jitterAmount: document.getElementById("jitterAmount"),
         stepsVal: document.getElementById("stepsVal"),
@@ -246,6 +254,7 @@
       function uniquePoints(points, eps = 1e-6) {
         const out = [];
         for (const p of points) {
+          if (!p) continue;
           let found = false;
           for (const q of out) {
             if (Math.abs(q.x - p.x) < eps && Math.abs(q.y - p.y) < eps) {
@@ -274,6 +283,7 @@
           showConstructionPoints: ui.showConstructionPoints.checked,
           showConstructionLines: ui.showConstructionLines.checked,
           showPolarityPoints: ui.showPolarityPoints.checked,
+          stopNegNeg: ui.stopNegNeg.checked,
           jitter: ui.jitter.checked,
           jitterAmount: parseFloat(ui.jitterAmount.value),
         };
@@ -302,6 +312,7 @@
           pointPolarity: [-1, 1],
           segmentOrient: [1],
           segmentPolarity: [1],
+          segmentActive: [true],
           construction: { bases: [], links: [], inserted: [] },
           prevPoints: null,
           meta: {
@@ -318,6 +329,7 @@
           const next = isExpansion
             ? expandPolyline(
                 prev.points,
+                prev.segmentActive,
                 prev.segmentOrient,
                 prev.segmentPolarity,
                 prev.pointPolarity,
@@ -327,6 +339,7 @@
               )
             : contractPolyline(
                 prev.points,
+                prev.segmentActive,
                 prev.segmentOrient,
                 prev.segmentPolarity,
                 prev.pointPolarity,
@@ -341,6 +354,7 @@
             pointPolarity: next.pointPolarity,
             segmentOrient: next.segmentOrient,
             segmentPolarity: next.segmentPolarity,
+            segmentActive: next.segmentActive,
             construction: next.construction,
             prevPoints: prev.points,
             meta: next.meta,
@@ -352,6 +366,7 @@
 
       function expandPolyline(
         points,
+        segmentActive,
         segmentOrient,
         segmentPolarity,
         pointPolarity,
@@ -365,6 +380,7 @@
             pointPolarity: pointPolarity ? pointPolarity.slice() : [],
             segmentOrient: segmentOrient ? segmentOrient.slice() : [],
             segmentPolarity: segmentPolarity ? segmentPolarity.slice() : [],
+            segmentActive: segmentActive ? segmentActive.slice() : [],
             construction: { bases: [], links: [], inserted: [] },
             meta: {
               type: "expansion",
@@ -386,6 +402,10 @@
           pointPolarity && pointPolarity.length === points.length
             ? pointPolarity
             : new Array(points.length).fill(0);
+        const activeIn =
+          segmentActive && segmentActive.length === points.length - 1
+            ? segmentActive
+            : new Array(points.length - 1).fill(true);
         const orientIn =
           segmentOrient && segmentOrient.length === points.length - 1
             ? segmentOrient
@@ -397,6 +417,7 @@
         const newPolarity = [polIn[0] ?? 0];
         const newSegmentOrient = [];
         const newSegmentPolarity = [];
+        const newSegmentActive = [];
         const tBase = clamp(params.position, 0, 1);
         const intensity = clamp(params.intensity, 0, 1);
         const angleBase = (params.angle * Math.PI) / 180;
@@ -411,11 +432,13 @@
           const p1 = points[i + 1];
           const pol0 = polIn[i] ?? 0;
           const pol1 = polIn[i + 1] ?? 0;
+          const isActive = activeIn[i] ?? true;
           const orient = segmentOrientation(pol0, pol1, orientIn[i] ?? 1);
           const side = sideIn[i] ?? 1;
           const dx = p1.x - p0.x;
           const dy = p1.y - p0.y;
           const len = Math.hypot(dx, dy);
+          const stopEdge = params.stopNegNeg && pol0 < 0 && pol1 < 0;
 
           if (len < 1e-9) {
             newPoints.push({ x: p0.x, y: p0.y });
@@ -423,6 +446,17 @@
             newPolarity.push(pol0, pol1);
             newSegmentOrient.push(orient, orient);
             newSegmentPolarity.push(side, side);
+            newSegmentActive.push(false, false);
+            continue;
+          }
+
+          if (!isActive || stopEdge) {
+            newPoints.push(p1);
+            newPolarity.push(pol1);
+            newSegmentOrient.push(orient);
+            newSegmentPolarity.push(side);
+            newSegmentActive.push(false);
+            targets.push(null);
             continue;
           }
 
@@ -470,6 +504,7 @@
           const orientB = segmentOrientation(1, pol1, orient);
           newSegmentOrient.push(orientA, orientB);
           newSegmentPolarity.push(side, side);
+          newSegmentActive.push(true, true);
         }
 
         const basePoints = construction.bases;
@@ -490,6 +525,7 @@
           pointPolarity: newPolarity,
           segmentOrient: newSegmentOrient,
           segmentPolarity: newSegmentPolarity,
+          segmentActive: newSegmentActive,
           construction,
           meta: {
             type: "expansion",
@@ -510,6 +546,7 @@
 
       function contractPolyline(
         points,
+        segmentActive,
         segmentOrient,
         segmentPolarity,
         pointPolarity,
@@ -525,6 +562,7 @@
             pointPolarity: pointPolarity ? pointPolarity.slice() : [],
             segmentOrient: segmentOrient ? segmentOrient.slice() : [],
             segmentPolarity: segmentPolarity ? segmentPolarity.slice() : [],
+            segmentActive: segmentActive ? segmentActive.slice() : [],
             construction: { bases: [], links: [], inserted: [] },
             meta: {
               type: "contraction",
@@ -546,6 +584,10 @@
           pointPolarity && pointPolarity.length === points.length
             ? pointPolarity
             : new Array(points.length).fill(0);
+        const activeIn =
+          segmentActive && segmentActive.length === points.length - 1
+            ? segmentActive
+            : new Array(points.length - 1).fill(true);
         const orientIn =
           segmentOrient && segmentOrient.length === points.length - 1
             ? segmentOrient
@@ -557,6 +599,7 @@
         const newPolarity = [polIn[0] ?? 0];
         const newSegmentOrient = [];
         const newSegmentPolarity = [];
+        const newSegmentActive = [];
         const tBase = clamp(params.contractionPosition, 0, 1);
         const intensity = clamp(params.contractionIntensity, 0, 1);
         const construction = { bases: [], links: [], inserted: [] };
@@ -568,6 +611,7 @@
           const p1 = points[i + 1];
           const pol0 = polIn[i] ?? 0;
           const pol1 = polIn[i + 1] ?? 0;
+          const isActive = activeIn[i] ?? true;
           const orient = segmentOrientation(pol0, pol1, orientIn[i] ?? 1);
           const side = sideIn[i] ?? 1;
           const dx = p1.x - p0.x;
@@ -580,6 +624,16 @@
             newPolarity.push(pol0, pol1);
             newSegmentOrient.push(orient, orient);
             newSegmentPolarity.push(side, side);
+            newSegmentActive.push(false, false);
+            continue;
+          }
+
+          if (!isActive) {
+            newPoints.push(p1);
+            newPolarity.push(pol1);
+            newSegmentOrient.push(orient);
+            newSegmentPolarity.push(side);
+            newSegmentActive.push(false);
             continue;
           }
 
@@ -603,6 +657,7 @@
           const orientB = segmentOrientation(-1, pol1, orient);
           newSegmentOrient.push(orientA, orientB);
           newSegmentPolarity.push(side, side);
+          newSegmentActive.push(true, true);
         }
 
         return {
@@ -610,6 +665,7 @@
           pointPolarity: newPolarity,
           segmentOrient: newSegmentOrient,
           segmentPolarity: newSegmentPolarity,
+          segmentActive: newSegmentActive,
           construction,
           meta: {
             type: "contraction",

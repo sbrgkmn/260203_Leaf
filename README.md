@@ -9,6 +9,7 @@ A small HTML5 Canvas web app that visualizes a parametric recursive curve with a
 - Polarity visualization for expansion (red) and contraction (green) points
 - Deterministic jitter option
 - Export per-step PNGs (640x640)
+- Optional stop for neg-neg edges during expansion
 
 ## Getting Started
 1. Start a local server in this folder:
@@ -25,6 +26,7 @@ A small HTML5 Canvas web app that visualizes a parametric recursive curve with a
 - **Show Construction Points**: toggles black evaluation points
 - **Show Construction Lines**: toggles dashed construction links
 - **Show Polarity Points**: toggles red/green polarity markers
+- **Stop Neg-Neg Edges**: stops expansion of edges with two negative endpoints
 - **Jitter**: toggles deterministic variation
 - **Jitter Amount**: strength of jitter when enabled
 - **Export PNG Steps**: downloads each step as a 640×640 PNG
