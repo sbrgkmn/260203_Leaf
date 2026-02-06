@@ -190,6 +190,7 @@
       const PADDING = 16;
       const EXPORT_SIZE = 640;
       const EXPORT_PADDING = 40;
+      const BASE_AXIS_LENGTH = 1;
 
       const ui = {
         steps: document.getElementById("steps"),
@@ -483,6 +484,11 @@
         return { scale, cx, cy, width, height };
       }
 
+      function fixedAxisTransform(width, height, padding) {
+        const scale = (height - padding * 2) / BASE_AXIS_LENGTH;
+        return { scale, cx: 0, cy: 0, width, height };
+      }
+
       function worldToCanvas(p, t) {
         const x = (p.x - t.cx) * t.scale + t.width / 2;
         const y = (-(p.y - t.cy)) * t.scale + t.height / 2;
@@ -497,7 +503,7 @@
         const points = step.points;
         if (!points || points.length < 2) return;
 
-        const transform = fitToCanvas(points, size, size, padding, true);
+        const transform = fixedAxisTransform(size, size, padding);
         const style = isExport
           ? {
               mainStroke: "rgb(0, 0, 0)",
