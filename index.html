@@ -152,6 +152,13 @@
         </label>
 
         <label class="control">
+          <span>Show Polarity Points</span>
+          <div class="control-row">
+            <input id="showPolarityPoints" type="checkbox" checked />
+          </div>
+        </label>
+
+        <label class="control">
           <span>Jitter</span>
           <div class="control-row">
             <input id="jitter" type="checkbox" />
@@ -194,6 +201,7 @@
         contractionIntensity: document.getElementById("contractionIntensity"),
         showConstructionPoints: document.getElementById("showConstructionPoints"),
         showConstructionLines: document.getElementById("showConstructionLines"),
+        showPolarityPoints: document.getElementById("showPolarityPoints"),
         jitter: document.getElementById("jitter"),
         jitterAmount: document.getElementById("jitterAmount"),
         stepsVal: document.getElementById("stepsVal"),
@@ -259,6 +267,7 @@
           contractionIntensity: parseFloat(ui.contractionIntensity.value),
           showConstructionPoints: ui.showConstructionPoints.checked,
           showConstructionLines: ui.showConstructionLines.checked,
+          showPolarityPoints: ui.showPolarityPoints.checked,
           jitter: ui.jitter.checked,
           jitterAmount: parseFloat(ui.jitterAmount.value),
         };
@@ -286,15 +295,20 @@
           points: baseLine,
           construction: { bases: [], links: [], inserted: [] },
           prevPoints: null,
-          meta: { type: "initial", center: null, targets: [] },
+          meta: {
+            type: "initial",
+            center: null,
+            targets: [],
+            polarity: { pos: [{ ...baseLine[1] }], neg: [{ ...baseLine[0] }], posLinks: [] },
+          },
         });
 
         for (let i = 1; i <= params.steps; i += 1) {
           const prev = steps[i - 1];
           const isExpansion = i % 2 === 1;
           const next = isExpansion
-            ? expandPolyline(prev.points, params, i)
-            : contractPolyline(prev.points, params, i, prev.meta.targets, prev.meta.center);
+            ? expandPolyline(prev.points, params, i, prev.meta.polarity)
+            : contractPolyline(prev.points, params, i, prev.meta.targets, prev.meta.center, prev.meta.polarity);
           steps.push({
             points: next.points,
             construction: next.construction,
@@ -306,12 +320,23 @@
         return steps;
       }
 
-      function expandPolyline(points, params, stepIndex) {
+      function expandPolyline(points, params, stepIndex, prevPolarity) {
         if (!points || points.length < 2) {
           return {
             points: points ? points.slice() : [],
             construction: { bases: [], links: [], inserted: [] },
-            meta: { type: "expansion", center: { x: 0, y: 0 }, expansionPoints: [], targets: [] },
+            meta: {
+              type: "expansion",
+              center: { x: 0, y: 0 },
+              expansionPoints: [],
+              targets: [],
+              polarity: {
+                pos: prevPolarity?.pos ? prevPolarity.pos.slice() : [],
+                neg: prevPolarity?.neg ? prevPolarity.neg.slice() : [],
+                posLinks: prevPolarity?.posLinks ? prevPolarity.posLinks.slice() : [],
+              },
+              contractionLinks: [],
+            },
           };
         }
 
@@ -323,6 +348,7 @@
         const construction = { bases: [], links: [], inserted: [] };
         const expansionPoints = [];
         const targets = [];
+        const expansionLinks = [];
 
         for (let i = 0; i < points.length - 1; i += 1) {
           const p0 = points[i];
@@ -365,6 +391,7 @@
           construction.links.push({ a: base, b: pNew });
           construction.inserted.push(pNew);
           expansionPoints.push(pNew);
+          expansionLinks.push({ a: base, b: pNew });
           targets.push(base, base);
 
           newPoints.push(pNew);
@@ -387,16 +414,39 @@
         return {
           points: newPoints,
           construction,
-          meta: { type: "expansion", center, expansionPoints, targets },
+          meta: {
+            type: "expansion",
+            center,
+            expansionPoints,
+            targets,
+            polarity: {
+              pos: (prevPolarity?.pos ? prevPolarity.pos.slice() : []).concat(expansionPoints),
+              neg: prevPolarity?.neg ? prevPolarity.neg.slice() : [],
+              posLinks: (prevPolarity?.posLinks ? prevPolarity.posLinks.slice() : []).concat(
+                expansionLinks
+              ),
+            },
+            contractionLinks: [],
+          },
         };
       }
 
-      function contractPolyline(points, params, stepIndex, targets, center) {
+      function contractPolyline(points, params, stepIndex, targets, center, prevPolarity) {
         if (!points || points.length < 2) {
           return {
             points: points ? points.slice() : [],
             construction: { bases: [], links: [], inserted: [] },
-            meta: { type: "contraction", center: center || { x: 0, y: 0 }, targets: [] },
+            meta: {
+              type: "contraction",
+              center: center || { x: 0, y: 0 },
+              targets: [],
+              polarity: {
+                pos: prevPolarity?.pos ? prevPolarity.pos.slice() : [],
+                neg: prevPolarity?.neg ? prevPolarity.neg.slice() : [],
+                posLinks: prevPolarity?.posLinks ? prevPolarity.posLinks.slice() : [],
+              },
+              contractionLinks: [],
+            },
           };
         }
 
@@ -405,6 +455,8 @@
         const tBase = clamp(params.contractionPosition, 0, 1);
         const intensity = clamp(params.contractionIntensity, 0, 1);
         const construction = { bases: [], links: [], inserted: [] };
+        const contractionPoints = [];
+        const contractionLinks = [];
 
         for (let i = 0; i < points.length - 1; i += 1) {
           const p0 = points[i];
@@ -430,6 +482,8 @@
           construction.bases.push(base);
           construction.links.push({ a: base, b: pNew });
           construction.inserted.push(pNew);
+          contractionPoints.push(pNew);
+          contractionLinks.push({ a: pNew, b: target });
           newPoints.push(pNew);
           newPoints.push(p1);
         }
@@ -437,7 +491,17 @@
         return {
           points: newPoints,
           construction,
-          meta: { type: "contraction", center: fallback, targets: targets || [] },
+          meta: {
+            type: "contraction",
+            center: fallback,
+            targets: targets || [],
+            polarity: {
+              pos: prevPolarity?.pos ? prevPolarity.pos.slice() : [],
+              neg: (prevPolarity?.neg ? prevPolarity.neg.slice() : []).concat(contractionPoints),
+              posLinks: prevPolarity?.posLinks ? prevPolarity.posLinks.slice() : [],
+            },
+            contractionLinks,
+          },
         };
       }
 
@@ -511,26 +575,45 @@
               mainStroke: "rgb(0, 0, 0)",
               prevStroke: "rgb(160, 160, 160)",
               constructionStroke: "rgb(120, 120, 120)",
-              baseFill: "rgb(208, 64, 50)",
-              centerFill: "rgb(29, 111, 66)",
+              baseFill: "rgb(0, 0, 0)",
+              centerFill: "rgb(0, 0, 0)",
+              posFill: "rgb(208, 64, 50)",
+              negFill: "rgb(29, 111, 66)",
               mainWidth: 2.2,
               prevWidth: 1.2,
               constructionWidth: 1.0,
+              axisStroke: "rgba(0, 0, 0, 0.2)",
+              axisWidth: 1.1,
               baseRadius: 3.2,
               centerRadius: 3.4,
+              polarityRadius: 3.6,
             }
           : {
               mainStroke: "#111111",
               prevStroke: "rgba(0, 0, 0, 0.25)",
               constructionStroke: "rgba(0, 0, 0, 0.45)",
-              baseFill: "#d04032",
-              centerFill: "#1d6f42",
+              baseFill: "#111111",
+              centerFill: "#111111",
+              posFill: "#d04032",
+              negFill: "#1d6f42",
               mainWidth: 1.2,
               prevWidth: 0.8,
               constructionWidth: 0.9,
+              axisStroke: "rgba(0, 0, 0, 0.2)",
+              axisWidth: 0.9,
               baseRadius: 2.4,
               centerRadius: 2.6,
+              polarityRadius: 2.8,
             };
+
+        ctx.strokeStyle = style.axisStroke;
+        ctx.lineWidth = style.axisWidth;
+        ctx.beginPath();
+        const axisTop = worldToCanvas({ x: 0, y: 0.5 }, transform);
+        const axisBottom = worldToCanvas({ x: 0, y: -0.5 }, transform);
+        ctx.moveTo(axisTop.x, axisTop.y);
+        ctx.lineTo(axisBottom.x, axisBottom.y);
+        ctx.stroke();
 
         if (step.prevPoints && step.prevPoints.length >= 2) {
           ctx.strokeStyle = style.prevStroke;
@@ -603,6 +686,26 @@
           ctx.setLineDash([]);
         }
 
+        if (params.showConstructionLines && step.meta && step.meta.contractionLinks?.length) {
+          ctx.strokeStyle = style.constructionStroke;
+          ctx.lineWidth = style.constructionWidth;
+          ctx.setLineDash([4, 3]);
+          const linkSets = SYMMETRIC_DISPLAY
+            ? [step.meta.contractionLinks, mirrorSegments(step.meta.contractionLinks)]
+            : [step.meta.contractionLinks];
+          linkSets.forEach((segments) => {
+            ctx.beginPath();
+            for (const seg of segments) {
+              const a = worldToCanvas(seg.a, transform);
+              const b = worldToCanvas(seg.b, transform);
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+            }
+            ctx.stroke();
+          });
+          ctx.setLineDash([]);
+        }
+
         if (params.showConstructionPoints) {
           ctx.fillStyle = style.baseFill;
           const baseSets = SYMMETRIC_DISPLAY
@@ -613,6 +716,50 @@
             ctx.beginPath();
             ctx.arc(pt.x, pt.y, style.baseRadius, 0, Math.PI * 2);
             ctx.fill();
+          }
+        }
+
+        if (params.showPolarityPoints && step.meta && step.meta.polarity) {
+          const posList = step.meta.polarity.pos || [];
+          const negList = step.meta.polarity.neg || [];
+          const posSets = SYMMETRIC_DISPLAY ? posList.concat(posList.map(mirrorPoint)) : posList;
+          const negSets = SYMMETRIC_DISPLAY ? negList.concat(negList.map(mirrorPoint)) : negList;
+
+          ctx.fillStyle = style.posFill;
+          for (const p of posSets) {
+            const pt = worldToCanvas(p, transform);
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, style.polarityRadius, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.fillStyle = style.negFill;
+          for (const p of negSets) {
+            const pt = worldToCanvas(p, transform);
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, style.polarityRadius, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        if (params.showConstructionLines && step.meta && step.meta.polarity) {
+          const links = step.meta.polarity.posLinks || [];
+          if (links.length) {
+            ctx.strokeStyle = style.constructionStroke;
+            ctx.lineWidth = style.constructionWidth;
+            ctx.setLineDash([4, 3]);
+            const linkSets = SYMMETRIC_DISPLAY ? [links, mirrorSegments(links)] : [links];
+            linkSets.forEach((segments) => {
+              ctx.beginPath();
+              for (const seg of segments) {
+                const a = worldToCanvas(seg.a, transform);
+                const b = worldToCanvas(seg.b, transform);
+                ctx.moveTo(a.x, a.y);
+                ctx.lineTo(b.x, b.y);
+              }
+              ctx.stroke();
+            });
+            ctx.setLineDash([]);
           }
         }
       }
