@@ -139,16 +139,16 @@
         </label>
 
         <label class="control">
-          <span>Show Points</span>
+          <span>Show Construction Points</span>
           <div class="control-row">
-            <input id="showPoints" type="checkbox" />
+            <input id="showConstructionPoints" type="checkbox" checked />
           </div>
         </label>
 
         <label class="control">
-          <span>Show Center</span>
+          <span>Show Construction Lines</span>
           <div class="control-row">
-            <input id="showCenter" type="checkbox" />
+            <input id="showConstructionLines" type="checkbox" checked />
           </div>
         </label>
 
@@ -183,8 +183,8 @@
         side: document.getElementById("side"),
         contractionPosition: document.getElementById("contractionPosition"),
         contractionIntensity: document.getElementById("contractionIntensity"),
-        showPoints: document.getElementById("showPoints"),
-        showCenter: document.getElementById("showCenter"),
+        showConstructionPoints: document.getElementById("showConstructionPoints"),
+        showConstructionLines: document.getElementById("showConstructionLines"),
         jitter: document.getElementById("jitter"),
         jitterAmount: document.getElementById("jitterAmount"),
         stepsVal: document.getElementById("stepsVal"),
@@ -236,8 +236,8 @@
           side: ui.side.value,
           contractionPosition: parseFloat(ui.contractionPosition.value),
           contractionIntensity: parseFloat(ui.contractionIntensity.value),
-          showPoints: ui.showPoints.checked,
-          showCenter: ui.showCenter.checked,
+          showConstructionPoints: ui.showConstructionPoints.checked,
+          showConstructionLines: ui.showConstructionLines.checked,
           jitter: ui.jitter.checked,
           jitterAmount: parseFloat(ui.jitterAmount.value),
         };
@@ -488,7 +488,7 @@
           ctx.stroke();
         }
 
-        if (params.showCenter && step.meta) {
+        if (params.showConstructionPoints && step.meta) {
           const targetList = step.meta.targets && step.meta.targets.length > 0 ? step.meta.targets : [];
           const centers = targetList.length
             ? uniquePoints(targetList)
@@ -496,17 +496,13 @@
             ? [step.meta.center]
             : [];
           if (centers.length) {
-            ctx.strokeStyle = "#1d6f42";
-            ctx.lineWidth = 1.2;
-            ctx.beginPath();
+            ctx.fillStyle = "#1d6f42";
             for (const center of centers) {
               const c = worldToCanvas(center, transform);
-              ctx.moveTo(c.x - 5, c.y);
-              ctx.lineTo(c.x + 5, c.y);
-              ctx.moveTo(c.x, c.y - 5);
-              ctx.lineTo(c.x, c.y + 5);
+              ctx.beginPath();
+              ctx.arc(c.x, c.y, 2.6, 0, Math.PI * 2);
+              ctx.fill();
             }
-            ctx.stroke();
           }
         }
 
@@ -524,17 +520,7 @@
 
         ctx.stroke();
 
-        if (params.showPoints) {
-          ctx.fillStyle = "#111111";
-          for (const p of points) {
-            const pt = worldToCanvas(p, transform);
-            ctx.beginPath();
-            ctx.arc(pt.x, pt.y, 2.2, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-
-        if (step.construction.links.length) {
+        if (step.construction.links.length && params.showConstructionLines) {
           ctx.strokeStyle = "rgba(0, 0, 0, 0.45)";
           ctx.lineWidth = 0.9;
           ctx.setLineDash([4, 3]);
@@ -547,18 +533,12 @@
           }
           ctx.stroke();
           ctx.setLineDash([]);
+        }
 
+        if (params.showConstructionPoints) {
           ctx.fillStyle = "#d04032";
           for (const base of step.construction.bases) {
             const pt = worldToCanvas(base, transform);
-            ctx.beginPath();
-            ctx.arc(pt.x, pt.y, 2.4, 0, Math.PI * 2);
-            ctx.fill();
-          }
-
-          ctx.fillStyle = "#2b6cb0";
-          for (const ins of step.construction.inserted) {
-            const pt = worldToCanvas(ins, transform);
             ctx.beginPath();
             ctx.arc(pt.x, pt.y, 2.4, 0, Math.PI * 2);
             ctx.fill();
