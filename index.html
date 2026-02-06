@@ -122,14 +122,6 @@
         </label>
 
         <label class="control">
-          <span>Side</span>
-          <select id="side">
-            <option value="right">Right</option>
-            <option value="left">Left</option>
-          </select>
-        </label>
-
-        <label class="control">
           <span>Contraction Position tc</span>
           <div class="control-row">
             <input id="contractionPosition" type="range" min="0" max="1" step="0.01" value="0.5" />
@@ -191,13 +183,13 @@
       const EXPORT_SIZE = 640;
       const EXPORT_PADDING = 40;
       const BASE_AXIS_LENGTH = 1;
+      const SYMMETRIC_DISPLAY = true;
 
       const ui = {
         steps: document.getElementById("steps"),
         position: document.getElementById("position"),
         intensity: document.getElementById("intensity"),
         angle: document.getElementById("angle"),
-        side: document.getElementById("side"),
         contractionPosition: document.getElementById("contractionPosition"),
         contractionIntensity: document.getElementById("contractionIntensity"),
         showConstructionPoints: document.getElementById("showConstructionPoints"),
@@ -223,6 +215,18 @@
         const c = Math.cos(angle);
         const s = Math.sin(angle);
         return { x: v.x * c - v.y * s, y: v.x * s + v.y * c };
+      }
+
+      function mirrorPoint(p) {
+        return { x: -p.x, y: p.y };
+      }
+
+      function mirrorPoints(points) {
+        return points.map(mirrorPoint);
+      }
+
+      function mirrorSegments(segments) {
+        return segments.map((seg) => ({ a: mirrorPoint(seg.a), b: mirrorPoint(seg.b) }));
       }
 
       function uniquePoints(points, eps = 1e-6) {
@@ -251,7 +255,6 @@
           position: parseFloat(ui.position.value),
           intensity: parseFloat(ui.intensity.value),
           angle: parseFloat(ui.angle.value),
-          side: ui.side.value,
           contractionPosition: parseFloat(ui.contractionPosition.value),
           contractionIntensity: parseFloat(ui.contractionIntensity.value),
           showConstructionPoints: ui.showConstructionPoints.checked,
@@ -316,7 +319,6 @@
         const tBase = clamp(params.position, 0, 1);
         const intensity = clamp(params.intensity, 0, 1);
         const angleBase = (params.angle * Math.PI) / 180;
-        const sideLeft = params.side === "left";
         const jitterAmount = clamp(params.jitterAmount, 0, 0.5);
         const construction = { bases: [], links: [], inserted: [] };
         const expansionPoints = [];
@@ -351,7 +353,7 @@
 
           const base = { x: p0.x + dx * t, y: p0.y + dy * t };
           const dir = { x: dx / len, y: dy / len };
-          let perp = sideLeft ? { x: -dir.y, y: dir.x } : { x: dir.y, y: -dir.x };
+          let perp = { x: dir.y, y: -dir.x };
           perp = rotateVec(perp, angle);
 
           const pNew = {
@@ -533,14 +535,19 @@
         if (step.prevPoints && step.prevPoints.length >= 2) {
           ctx.strokeStyle = style.prevStroke;
           ctx.lineWidth = style.prevWidth;
-          ctx.beginPath();
-          const prevFirst = worldToCanvas(step.prevPoints[0], transform);
-          ctx.moveTo(prevFirst.x, prevFirst.y);
-          for (let i = 1; i < step.prevPoints.length; i += 1) {
-            const pt = worldToCanvas(step.prevPoints[i], transform);
-            ctx.lineTo(pt.x, pt.y);
-          }
-          ctx.stroke();
+          const prevSets = SYMMETRIC_DISPLAY
+            ? [step.prevPoints, mirrorPoints(step.prevPoints)]
+            : [step.prevPoints];
+          prevSets.forEach((pts) => {
+            ctx.beginPath();
+            const prevFirst = worldToCanvas(pts[0], transform);
+            ctx.moveTo(prevFirst.x, prevFirst.y);
+            for (let i = 1; i < pts.length; i += 1) {
+              const pt = worldToCanvas(pts[i], transform);
+              ctx.lineTo(pt.x, pt.y);
+            }
+            ctx.stroke();
+          });
         }
 
         if (params.showConstructionPoints && step.meta) {
@@ -552,7 +559,8 @@
             : [];
           if (centers.length) {
             ctx.fillStyle = style.centerFill;
-            for (const center of centers) {
+            const centerSets = SYMMETRIC_DISPLAY ? centers.concat(centers.map(mirrorPoint)) : centers;
+            for (const center of centerSets) {
               const c = worldToCanvas(center, transform);
               ctx.beginPath();
               ctx.arc(c.x, c.y, style.centerRadius, 0, Math.PI * 2);
@@ -563,36 +571,44 @@
 
         ctx.strokeStyle = style.mainStroke;
         ctx.lineWidth = style.mainWidth;
-        ctx.beginPath();
-
-        const first = worldToCanvas(points[0], transform);
-        ctx.moveTo(first.x, first.y);
-
-        for (let i = 1; i < points.length; i += 1) {
-          const pt = worldToCanvas(points[i], transform);
-          ctx.lineTo(pt.x, pt.y);
-        }
-
-        ctx.stroke();
+        const pointSets = SYMMETRIC_DISPLAY ? [points, mirrorPoints(points)] : [points];
+        pointSets.forEach((pts) => {
+          ctx.beginPath();
+          const first = worldToCanvas(pts[0], transform);
+          ctx.moveTo(first.x, first.y);
+          for (let i = 1; i < pts.length; i += 1) {
+            const pt = worldToCanvas(pts[i], transform);
+            ctx.lineTo(pt.x, pt.y);
+          }
+          ctx.stroke();
+        });
 
         if (step.construction.links.length && params.showConstructionLines) {
           ctx.strokeStyle = style.constructionStroke;
           ctx.lineWidth = style.constructionWidth;
           ctx.setLineDash([4, 3]);
-          ctx.beginPath();
-          for (const seg of step.construction.links) {
-            const a = worldToCanvas(seg.a, transform);
-            const b = worldToCanvas(seg.b, transform);
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
-          }
-          ctx.stroke();
+          const linkSets = SYMMETRIC_DISPLAY
+            ? [step.construction.links, mirrorSegments(step.construction.links)]
+            : [step.construction.links];
+          linkSets.forEach((segments) => {
+            ctx.beginPath();
+            for (const seg of segments) {
+              const a = worldToCanvas(seg.a, transform);
+              const b = worldToCanvas(seg.b, transform);
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+            }
+            ctx.stroke();
+          });
           ctx.setLineDash([]);
         }
 
         if (params.showConstructionPoints) {
           ctx.fillStyle = style.baseFill;
-          for (const base of step.construction.bases) {
+          const baseSets = SYMMETRIC_DISPLAY
+            ? step.construction.bases.concat(step.construction.bases.map(mirrorPoint))
+            : step.construction.bases;
+          for (const base of baseSets) {
             const pt = worldToCanvas(base, transform);
             ctx.beginPath();
             ctx.arc(pt.x, pt.y, style.baseRadius, 0, Math.PI * 2);
