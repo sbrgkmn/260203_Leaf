@@ -75,6 +75,13 @@
         font-size: 12px;
         color: #222222;
       }
+      .control button {
+        padding: 6px 10px;
+        border: 1px solid #111111;
+        background: #ffffff;
+        cursor: pointer;
+        font-size: 12px;
+      }
     </style>
   </head>
   <body>
@@ -166,6 +173,13 @@
             <span class="value" id="jitterVal"></span>
           </div>
         </label>
+
+        <label class="control">
+          <span>Export</span>
+          <div class="control-row">
+            <button id="exportSteps" type="button">Export PNG Steps</button>
+          </div>
+        </label>
       </div>
 
       <div class="tiles" id="tiles"></div>
@@ -174,6 +188,8 @@
     <script>
       const TILE_SIZE = 220;
       const PADDING = 16;
+      const EXPORT_SIZE = 640;
+      const EXPORT_PADDING = 40;
 
       const ui = {
         steps: document.getElementById("steps"),
@@ -195,6 +211,7 @@
         contractionIntensityVal: document.getElementById("contractionIntensityVal"),
         jitterVal: document.getElementById("jitterVal"),
         tiles: document.getElementById("tiles"),
+        exportSteps: document.getElementById("exportSteps"),
       };
 
       function clamp(value, min, max) {
@@ -346,6 +363,7 @@
           construction.inserted.push(pNew);
           expansionPoints.push(pNew);
           targets.push(base, base);
+
           newPoints.push(pNew);
           newPoints.push(p1);
         }
@@ -420,7 +438,7 @@
         };
       }
 
-      function fitToCanvas(points, width, height, padding) {
+      function computeBounds(points) {
         let minX = Infinity;
         let minY = Infinity;
         let maxX = -Infinity;
@@ -434,11 +452,26 @@
           maxY = Math.max(maxY, p.y);
         }
 
+        return { minX, minY, maxX, maxY };
+      }
+
+      function fitToCanvas(points, width, height, padding, symmetric = false) {
+        let { minX, minY, maxX, maxY } = computeBounds(points);
+
         if (!Number.isFinite(minX)) {
           minX = -1;
           minY = -1;
           maxX = 1;
           maxY = 1;
+        }
+
+        if (symmetric) {
+          const maxAbsX = Math.max(Math.abs(minX), Math.abs(maxX), 1e-6);
+          const maxAbsY = Math.max(Math.abs(minY), Math.abs(maxY), 1e-6);
+          minX = -maxAbsX;
+          maxX = maxAbsX;
+          minY = -maxAbsY;
+          maxY = maxAbsY;
         }
 
         const dx = Math.max(1e-6, maxX - minX);
@@ -456,28 +489,44 @@
         return { x, y };
       }
 
-      function drawStep(canvas, step, params) {
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = Math.round(TILE_SIZE * dpr);
-        canvas.height = Math.round(TILE_SIZE * dpr);
-        canvas.style.width = `${TILE_SIZE}px`;
-        canvas.style.height = `${TILE_SIZE}px`;
-
-        const ctx = canvas.getContext("2d");
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-        ctx.clearRect(0, 0, TILE_SIZE, TILE_SIZE);
+      function drawStepToContext(ctx, step, params, size, padding, isExport = false) {
+        ctx.clearRect(0, 0, size, size);
         ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
+        ctx.fillRect(0, 0, size, size);
 
         const points = step.points;
         if (!points || points.length < 2) return;
 
-        const transform = fitToCanvas(points, TILE_SIZE, TILE_SIZE, PADDING);
+        const transform = fitToCanvas(points, size, size, padding, true);
+        const style = isExport
+          ? {
+              mainStroke: "rgb(0, 0, 0)",
+              prevStroke: "rgb(160, 160, 160)",
+              constructionStroke: "rgb(120, 120, 120)",
+              baseFill: "rgb(208, 64, 50)",
+              centerFill: "rgb(29, 111, 66)",
+              mainWidth: 2.2,
+              prevWidth: 1.2,
+              constructionWidth: 1.0,
+              baseRadius: 3.2,
+              centerRadius: 3.4,
+            }
+          : {
+              mainStroke: "#111111",
+              prevStroke: "rgba(0, 0, 0, 0.25)",
+              constructionStroke: "rgba(0, 0, 0, 0.45)",
+              baseFill: "#d04032",
+              centerFill: "#1d6f42",
+              mainWidth: 1.2,
+              prevWidth: 0.8,
+              constructionWidth: 0.9,
+              baseRadius: 2.4,
+              centerRadius: 2.6,
+            };
 
         if (step.prevPoints && step.prevPoints.length >= 2) {
-          ctx.strokeStyle = "rgba(0, 0, 0, 0.25)";
-          ctx.lineWidth = 0.8;
+          ctx.strokeStyle = style.prevStroke;
+          ctx.lineWidth = style.prevWidth;
           ctx.beginPath();
           const prevFirst = worldToCanvas(step.prevPoints[0], transform);
           ctx.moveTo(prevFirst.x, prevFirst.y);
@@ -496,18 +545,18 @@
             ? [step.meta.center]
             : [];
           if (centers.length) {
-            ctx.fillStyle = "#1d6f42";
+            ctx.fillStyle = style.centerFill;
             for (const center of centers) {
               const c = worldToCanvas(center, transform);
               ctx.beginPath();
-              ctx.arc(c.x, c.y, 2.6, 0, Math.PI * 2);
+              ctx.arc(c.x, c.y, style.centerRadius, 0, Math.PI * 2);
               ctx.fill();
             }
           }
         }
 
-        ctx.strokeStyle = "#111111";
-        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = style.mainStroke;
+        ctx.lineWidth = style.mainWidth;
         ctx.beginPath();
 
         const first = worldToCanvas(points[0], transform);
@@ -521,8 +570,8 @@
         ctx.stroke();
 
         if (step.construction.links.length && params.showConstructionLines) {
-          ctx.strokeStyle = "rgba(0, 0, 0, 0.45)";
-          ctx.lineWidth = 0.9;
+          ctx.strokeStyle = style.constructionStroke;
+          ctx.lineWidth = style.constructionWidth;
           ctx.setLineDash([4, 3]);
           ctx.beginPath();
           for (const seg of step.construction.links) {
@@ -536,20 +585,33 @@
         }
 
         if (params.showConstructionPoints) {
-          ctx.fillStyle = "#d04032";
+          ctx.fillStyle = style.baseFill;
           for (const base of step.construction.bases) {
             const pt = worldToCanvas(base, transform);
             ctx.beginPath();
-            ctx.arc(pt.x, pt.y, 2.4, 0, Math.PI * 2);
+            ctx.arc(pt.x, pt.y, style.baseRadius, 0, Math.PI * 2);
             ctx.fill();
           }
         }
       }
 
+      function drawStep(canvas, step, params) {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(TILE_SIZE * dpr);
+        canvas.height = Math.round(TILE_SIZE * dpr);
+        canvas.style.width = `${TILE_SIZE}px`;
+        canvas.style.height = `${TILE_SIZE}px`;
+
+        const ctx = canvas.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        drawStepToContext(ctx, step, params, TILE_SIZE, PADDING);
+      }
+
       function renderSteps(stepPolylines, params) {
         ui.tiles.innerHTML = "";
-
-        stepPolylines.forEach((step, index) => {
+        const startIndex = stepPolylines.length > 1 ? 1 : 0;
+        stepPolylines.slice(startIndex).forEach((step, offset) => {
+          const index = startIndex + offset;
           const tile = document.createElement("div");
           tile.className = "tile";
 
@@ -576,8 +638,39 @@
       const inputs = document.querySelectorAll("input, select");
       inputs.forEach((input) => input.addEventListener("input", update));
       window.addEventListener("resize", update);
+      ui.exportSteps.addEventListener("click", () => exportSteps());
 
       update();
+
+      function canvasToBlob(canvas) {
+        return new Promise((resolve) => {
+          canvas.toBlob((blob) => resolve(blob), "image/png");
+        });
+      }
+
+      async function exportSteps() {
+        const params = readParams();
+        const steps = generateSteps(params);
+
+        const offscreen = document.createElement("canvas");
+        offscreen.width = EXPORT_SIZE;
+        offscreen.height = EXPORT_SIZE;
+        const ctx = offscreen.getContext("2d");
+
+        const startIndex = steps.length > 1 ? 1 : 0;
+        for (let i = startIndex; i < steps.length; i += 1) {
+          drawStepToContext(ctx, steps[i], params, EXPORT_SIZE, EXPORT_PADDING, true);
+          const blob = await canvasToBlob(offscreen);
+          if (!blob) continue;
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.download = `step_${String(i).padStart(2, "0")}.png`;
+          link.href = url;
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          await new Promise((resolve) => setTimeout(resolve, 120));
+        }
+      }
     </script>
   </body>
 </html>
