@@ -115,9 +115,40 @@
         </label>
 
         <label class="control">
+          <span>Side</span>
+          <select id="side">
+            <option value="right">Right</option>
+            <option value="left">Left</option>
+          </select>
+        </label>
+
+        <label class="control">
+          <span>Contraction Position tc</span>
+          <div class="control-row">
+            <input id="contractionPosition" type="range" min="0" max="1" step="0.01" value="0.5" />
+            <span class="value" id="contractionPositionVal"></span>
+          </div>
+        </label>
+
+        <label class="control">
+          <span>Contraction Intensity</span>
+          <div class="control-row">
+            <input id="contractionIntensity" type="range" min="0" max="1" step="0.01" value="0.5" />
+            <span class="value" id="contractionIntensityVal"></span>
+          </div>
+        </label>
+
+        <label class="control">
           <span>Show Points</span>
           <div class="control-row">
             <input id="showPoints" type="checkbox" />
+          </div>
+        </label>
+
+        <label class="control">
+          <span>Show Center</span>
+          <div class="control-row">
+            <input id="showCenter" type="checkbox" />
           </div>
         </label>
 
@@ -149,13 +180,19 @@
         position: document.getElementById("position"),
         intensity: document.getElementById("intensity"),
         angle: document.getElementById("angle"),
+        side: document.getElementById("side"),
+        contractionPosition: document.getElementById("contractionPosition"),
+        contractionIntensity: document.getElementById("contractionIntensity"),
         showPoints: document.getElementById("showPoints"),
+        showCenter: document.getElementById("showCenter"),
         jitter: document.getElementById("jitter"),
         jitterAmount: document.getElementById("jitterAmount"),
         stepsVal: document.getElementById("stepsVal"),
         positionVal: document.getElementById("positionVal"),
         intensityVal: document.getElementById("intensityVal"),
         angleVal: document.getElementById("angleVal"),
+        contractionPositionVal: document.getElementById("contractionPositionVal"),
+        contractionIntensityVal: document.getElementById("contractionIntensityVal"),
         jitterVal: document.getElementById("jitterVal"),
         tiles: document.getElementById("tiles"),
       };
@@ -170,6 +207,21 @@
         return { x: v.x * c - v.y * s, y: v.x * s + v.y * c };
       }
 
+      function uniquePoints(points, eps = 1e-6) {
+        const out = [];
+        for (const p of points) {
+          let found = false;
+          for (const q of out) {
+            if (Math.abs(q.x - p.x) < eps && Math.abs(q.y - p.y) < eps) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) out.push(p);
+        }
+        return out;
+      }
+
       function rand(seed) {
         const x = Math.sin(seed) * 43758.5453;
         return x - Math.floor(x);
@@ -181,7 +233,11 @@
           position: parseFloat(ui.position.value),
           intensity: parseFloat(ui.intensity.value),
           angle: parseFloat(ui.angle.value),
+          side: ui.side.value,
+          contractionPosition: parseFloat(ui.contractionPosition.value),
+          contractionIntensity: parseFloat(ui.contractionIntensity.value),
           showPoints: ui.showPoints.checked,
+          showCenter: ui.showCenter.checked,
           jitter: ui.jitter.checked,
           jitterAmount: parseFloat(ui.jitterAmount.value),
         };
@@ -193,6 +249,8 @@
         ui.positionVal.textContent = params.position.toFixed(2);
         ui.intensityVal.textContent = params.intensity.toFixed(2);
         ui.angleVal.textContent = params.angle.toFixed(0);
+        ui.contractionPositionVal.textContent = params.contractionPosition.toFixed(2);
+        ui.contractionIntensityVal.textContent = params.contractionIntensity.toFixed(2);
         ui.jitterVal.textContent = params.jitterAmount.toFixed(2);
         ui.jitterAmount.disabled = !params.jitter;
       }
@@ -205,34 +263,46 @@
         ];
         steps.push({
           points: baseLine,
-          construction: { bases: [], links: [] },
+          construction: { bases: [], links: [], inserted: [] },
           prevPoints: null,
+          meta: { type: "initial", center: null, targets: [] },
         });
 
         for (let i = 1; i <= params.steps; i += 1) {
           const prev = steps[i - 1];
-          const next = subdividePolyline(prev.points, params, i);
+          const isExpansion = i % 2 === 1;
+          const next = isExpansion
+            ? expandPolyline(prev.points, params, i)
+            : contractPolyline(prev.points, params, i, prev.meta.targets, prev.meta.center);
           steps.push({
             points: next.points,
             construction: next.construction,
             prevPoints: prev.points,
+            meta: next.meta,
           });
         }
 
         return steps;
       }
 
-      function subdividePolyline(points, params, stepIndex) {
+      function expandPolyline(points, params, stepIndex) {
         if (!points || points.length < 2) {
-          return { points: points ? points.slice() : [], construction: { bases: [], links: [] } };
+          return {
+            points: points ? points.slice() : [],
+            construction: { bases: [], links: [], inserted: [] },
+            meta: { type: "expansion", center: { x: 0, y: 0 }, expansionPoints: [], targets: [] },
+          };
         }
 
         const newPoints = [points[0]];
         const tBase = clamp(params.position, 0, 1);
         const intensity = clamp(params.intensity, 0, 1);
         const angleBase = (params.angle * Math.PI) / 180;
+        const sideLeft = params.side === "left";
         const jitterAmount = clamp(params.jitterAmount, 0, 0.5);
-        const construction = { bases: [], links: [] };
+        const construction = { bases: [], links: [], inserted: [] };
+        const expansionPoints = [];
+        const targets = [];
 
         for (let i = 0; i < points.length - 1; i += 1) {
           const p0 = points[i];
@@ -263,7 +333,7 @@
 
           const base = { x: p0.x + dx * t, y: p0.y + dy * t };
           const dir = { x: dx / len, y: dy / len };
-          let perp = { x: dir.y, y: -dir.x };
+          let perp = sideLeft ? { x: -dir.y, y: dir.x } : { x: dir.y, y: -dir.x };
           perp = rotateVec(perp, angle);
 
           const pNew = {
@@ -273,11 +343,81 @@
 
           construction.bases.push(base);
           construction.links.push({ a: base, b: pNew });
+          construction.inserted.push(pNew);
+          expansionPoints.push(pNew);
+          targets.push(base, base);
           newPoints.push(pNew);
           newPoints.push(p1);
         }
 
-        return { points: newPoints, construction };
+        const basePoints = construction.bases;
+        const center =
+          basePoints.length > 0
+            ? basePoints.reduce(
+                (acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }),
+                { x: 0, y: 0 }
+              )
+            : { x: 0, y: 0 };
+        if (basePoints.length > 0) {
+          center.x /= basePoints.length;
+          center.y /= basePoints.length;
+        }
+
+        return {
+          points: newPoints,
+          construction,
+          meta: { type: "expansion", center, expansionPoints, targets },
+        };
+      }
+
+      function contractPolyline(points, params, stepIndex, targets, center) {
+        if (!points || points.length < 2) {
+          return {
+            points: points ? points.slice() : [],
+            construction: { bases: [], links: [], inserted: [] },
+            meta: { type: "contraction", center: center || { x: 0, y: 0 }, targets: [] },
+          };
+        }
+
+        const fallback = center || { x: 0, y: 0 };
+        const newPoints = [points[0]];
+        const tBase = clamp(params.contractionPosition, 0, 1);
+        const intensity = clamp(params.contractionIntensity, 0, 1);
+        const construction = { bases: [], links: [], inserted: [] };
+
+        for (let i = 0; i < points.length - 1; i += 1) {
+          const p0 = points[i];
+          const p1 = points[i + 1];
+          const dx = p1.x - p0.x;
+          const dy = p1.y - p0.y;
+          const len = Math.hypot(dx, dy);
+
+          if (len < 1e-9) {
+            newPoints.push({ x: p0.x, y: p0.y });
+            newPoints.push({ x: p1.x, y: p1.y });
+            continue;
+          }
+
+          const base = { x: p0.x + dx * tBase, y: p0.y + dy * tBase };
+          const target = targets && targets[i] ? targets[i] : fallback;
+          const toCenter = { x: target.x - base.x, y: target.y - base.y };
+          const pNew = {
+            x: base.x + toCenter.x * intensity,
+            y: base.y + toCenter.y * intensity,
+          };
+
+          construction.bases.push(base);
+          construction.links.push({ a: base, b: pNew });
+          construction.inserted.push(pNew);
+          newPoints.push(pNew);
+          newPoints.push(p1);
+        }
+
+        return {
+          points: newPoints,
+          construction,
+          meta: { type: "contraction", center: fallback, targets: targets || [] },
+        };
       }
 
       function fitToCanvas(points, width, height, padding) {
@@ -348,24 +488,25 @@
           ctx.stroke();
         }
 
-        if (step.construction.links.length) {
-          ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
-          ctx.lineWidth = 0.8;
-          ctx.beginPath();
-          for (const seg of step.construction.links) {
-            const a = worldToCanvas(seg.a, transform);
-            const b = worldToCanvas(seg.b, transform);
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
-          }
-          ctx.stroke();
-
-          ctx.fillStyle = "#d04032";
-          for (const base of step.construction.bases) {
-            const pt = worldToCanvas(base, transform);
+        if (params.showCenter && step.meta) {
+          const targetList = step.meta.targets && step.meta.targets.length > 0 ? step.meta.targets : [];
+          const centers = targetList.length
+            ? uniquePoints(targetList)
+            : step.meta.center
+            ? [step.meta.center]
+            : [];
+          if (centers.length) {
+            ctx.strokeStyle = "#1d6f42";
+            ctx.lineWidth = 1.2;
             ctx.beginPath();
-            ctx.arc(pt.x, pt.y, 2.4, 0, Math.PI * 2);
-            ctx.fill();
+            for (const center of centers) {
+              const c = worldToCanvas(center, transform);
+              ctx.moveTo(c.x - 5, c.y);
+              ctx.lineTo(c.x + 5, c.y);
+              ctx.moveTo(c.x, c.y - 5);
+              ctx.lineTo(c.x, c.y + 5);
+            }
+            ctx.stroke();
           }
         }
 
@@ -389,6 +530,37 @@
             const pt = worldToCanvas(p, transform);
             ctx.beginPath();
             ctx.arc(pt.x, pt.y, 2.2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        if (step.construction.links.length) {
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.45)";
+          ctx.lineWidth = 0.9;
+          ctx.setLineDash([4, 3]);
+          ctx.beginPath();
+          for (const seg of step.construction.links) {
+            const a = worldToCanvas(seg.a, transform);
+            const b = worldToCanvas(seg.b, transform);
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = "#d04032";
+          for (const base of step.construction.bases) {
+            const pt = worldToCanvas(base, transform);
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 2.4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.fillStyle = "#2b6cb0";
+          for (const ins of step.construction.inserted) {
+            const pt = worldToCanvas(ins, transform);
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 2.4, 0, Math.PI * 2);
             ctx.fill();
           }
         }
