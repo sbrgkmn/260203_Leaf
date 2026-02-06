@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>260203_Leaf</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Trebuchet MS", "Segoe UI", Tahoma, sans-serif;
+        background: #ffffff;
+        color: #111111;
+      }
+      .page {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 16px;
+      }
+      .title {
+        font-size: 18px;
+        letter-spacing: 0.2px;
+        margin: 0;
+      }
+      .controls {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px 16px;
+        align-items: center;
+      }
+      .control {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 13px;
+      }
+      .control-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .control input[type="range"] {
+        width: 100%;
+      }
+      .control .value {
+        font-variant-numeric: tabular-nums;
+        min-width: 44px;
+        text-align: right;
+      }
+      .tiles {
+        display: flex;
+        gap: 16px;
+        overflow-x: auto;
+        padding-bottom: 8px;
+      }
+      .tile {
+        flex: 0 0 auto;
+        width: 220px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+      .tile canvas {
+        border: 1px solid #111111;
+        background: #ffffff;
+      }
+      .tile .label {
+        font-size: 12px;
+        color: #222222;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <h1 class="title">260203_Leaf</h1>
+
+      <div class="controls">
+        <label class="control">
+          <span>Steps</span>
+          <div class="control-row">
+            <input id="steps" type="range" min="0" max="8" step="1" value="5" />
+            <span class="value" id="stepsVal"></span>
+          </div>
+        </label>
+
+        <label class="control">
+          <span>Position t</span>
+          <div class="control-row">
+            <input id="position" type="range" min="0" max="1" step="0.01" value="0.5" />
+            <span class="value" id="positionVal"></span>
+          </div>
+        </label>
+
+        <label class="control">
+          <span>Intensity</span>
+          <div class="control-row">
+            <input id="intensity" type="range" min="0" max="1" step="0.01" value="0.35" />
+            <span class="value" id="intensityVal"></span>
+          </div>
+        </label>
+
+        <label class="control">
+          <span>Angle (deg)</span>
+          <div class="control-row">
+            <input id="angle" type="range" min="-180" max="180" step="1" value="0" />
+            <span class="value" id="angleVal"></span>
+          </div>
+        </label>
+
+        <label class="control">
+          <span>Show Points</span>
+          <div class="control-row">
+            <input id="showPoints" type="checkbox" />
+          </div>
+        </label>
+
+        <label class="control">
+          <span>Jitter</span>
+          <div class="control-row">
+            <input id="jitter" type="checkbox" />
+          </div>
+        </label>
+
+        <label class="control">
+          <span>Jitter Amount</span>
+          <div class="control-row">
+            <input id="jitterAmount" type="range" min="0" max="0.3" step="0.01" value="0.08" />
+            <span class="value" id="jitterVal"></span>
+          </div>
+        </label>
+      </div>
+
+      <div class="tiles" id="tiles"></div>
+    </div>
+
+    <script>
+      const TILE_SIZE = 220;
+      const PADDING = 16;
+
+      const ui = {
+        steps: document.getElementById("steps"),
+        position: document.getElementById("position"),
+        intensity: document.getElementById("intensity"),
+        angle: document.getElementById("angle"),
+        showPoints: document.getElementById("showPoints"),
+        jitter: document.getElementById("jitter"),
+        jitterAmount: document.getElementById("jitterAmount"),
+        stepsVal: document.getElementById("stepsVal"),
+        positionVal: document.getElementById("positionVal"),
+        intensityVal: document.getElementById("intensityVal"),
+        angleVal: document.getElementById("angleVal"),
+        jitterVal: document.getElementById("jitterVal"),
+        tiles: document.getElementById("tiles"),
+      };
+
+      function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function rotateVec(v, angle) {
+        const c = Math.cos(angle);
+        const s = Math.sin(angle);
+        return { x: v.x * c - v.y * s, y: v.x * s + v.y * c };
+      }
+
+      function rand(seed) {
+        const x = Math.sin(seed) * 43758.5453;
+        return x - Math.floor(x);
+      }
+
+      function readParams() {
+        const params = {
+          steps: parseInt(ui.steps.value, 10),
+          position: parseFloat(ui.position.value),
+          intensity: parseFloat(ui.intensity.value),
+          angle: parseFloat(ui.angle.value),
+          showPoints: ui.showPoints.checked,
+          jitter: ui.jitter.checked,
+          jitterAmount: parseFloat(ui.jitterAmount.value),
+        };
+        return params;
+      }
+
+      function updateReadouts(params) {
+        ui.stepsVal.textContent = params.steps;
+        ui.positionVal.textContent = params.position.toFixed(2);
+        ui.intensityVal.textContent = params.intensity.toFixed(2);
+        ui.angleVal.textContent = params.angle.toFixed(0);
+        ui.jitterVal.textContent = params.jitterAmount.toFixed(2);
+        ui.jitterAmount.disabled = !params.jitter;
+      }
+
+      function generateSteps(params) {
+        const steps = [];
+        const baseLine = [
+          { x: 0, y: -0.5 },
+          { x: 0, y: 0.5 },
+        ];
+        steps.push({
+          points: baseLine,
+          construction: { bases: [], links: [] },
+          prevPoints: null,
+        });
+
+        for (let i = 1; i <= params.steps; i += 1) {
+          const prev = steps[i - 1];
+          const next = subdividePolyline(prev.points, params, i);
+          steps.push({
+            points: next.points,
+            construction: next.construction,
+            prevPoints: prev.points,
+          });
+        }
+
+        return steps;
+      }
+
+      function subdividePolyline(points, params, stepIndex) {
+        if (!points || points.length < 2) {
+          return { points: points ? points.slice() : [], construction: { bases: [], links: [] } };
+        }
+
+        const newPoints = [points[0]];
+        const tBase = clamp(params.position, 0, 1);
+        const intensity = clamp(params.intensity, 0, 1);
+        const angleBase = (params.angle * Math.PI) / 180;
+        const jitterAmount = clamp(params.jitterAmount, 0, 0.5);
+        const construction = { bases: [], links: [] };
+
+        for (let i = 0; i < points.length - 1; i += 1) {
+          const p0 = points[i];
+          const p1 = points[i + 1];
+          const dx = p1.x - p0.x;
+          const dy = p1.y - p0.y;
+          const len = Math.hypot(dx, dy);
+
+          if (len < 1e-9) {
+            newPoints.push({ x: p0.x, y: p0.y });
+            newPoints.push({ x: p1.x, y: p1.y });
+            continue;
+          }
+
+          let t = tBase;
+          let angle = angleBase;
+          let magnitude = len * intensity;
+
+          if (params.jitter) {
+            const seedBase = (stepIndex + 1) * 9283.123 + (i + 1) * 137.57;
+            const j1 = rand(seedBase + 0.17) - 0.5;
+            const j2 = rand(seedBase + 3.49) - 0.5;
+            const j3 = rand(seedBase + 8.91) - 0.5;
+            t = clamp(t + j1 * jitterAmount, 0, 1);
+            angle += j2 * jitterAmount * Math.PI;
+            magnitude *= 1 + j3 * jitterAmount;
+          }
+
+          const base = { x: p0.x + dx * t, y: p0.y + dy * t };
+          const dir = { x: dx / len, y: dy / len };
+          let perp = { x: dir.y, y: -dir.x };
+          perp = rotateVec(perp, angle);
+
+          const pNew = {
+            x: base.x + perp.x * magnitude,
+            y: base.y + perp.y * magnitude,
+          };
+
+          construction.bases.push(base);
+          construction.links.push({ a: base, b: pNew });
+          newPoints.push(pNew);
+          newPoints.push(p1);
+        }
+
+        return { points: newPoints, construction };
+      }
+
+      function fitToCanvas(points, width, height, padding) {
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+
+        for (const p of points) {
+          if (!p) continue;
+          minX = Math.min(minX, p.x);
+          minY = Math.min(minY, p.y);
+          maxX = Math.max(maxX, p.x);
+          maxY = Math.max(maxY, p.y);
+        }
+
+        if (!Number.isFinite(minX)) {
+          minX = -1;
+          minY = -1;
+          maxX = 1;
+          maxY = 1;
+        }
+
+        const dx = Math.max(1e-6, maxX - minX);
+        const dy = Math.max(1e-6, maxY - minY);
+        const scale = Math.min((width - padding * 2) / dx, (height - padding * 2) / dy);
+        const cx = (minX + maxX) / 2;
+        const cy = (minY + maxY) / 2;
+
+        return { scale, cx, cy, width, height };
+      }
+
+      function worldToCanvas(p, t) {
+        const x = (p.x - t.cx) * t.scale + t.width / 2;
+        const y = (-(p.y - t.cy)) * t.scale + t.height / 2;
+        return { x, y };
+      }
+
+      function drawStep(canvas, step, params) {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(TILE_SIZE * dpr);
+        canvas.height = Math.round(TILE_SIZE * dpr);
+        canvas.style.width = `${TILE_SIZE}px`;
+        canvas.style.height = `${TILE_SIZE}px`;
+
+        const ctx = canvas.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        ctx.clearRect(0, 0, TILE_SIZE, TILE_SIZE);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
+
+        const points = step.points;
+        if (!points || points.length < 2) return;
+
+        const transform = fitToCanvas(points, TILE_SIZE, TILE_SIZE, PADDING);
+
+        if (step.prevPoints && step.prevPoints.length >= 2) {
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.25)";
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          const prevFirst = worldToCanvas(step.prevPoints[0], transform);
+          ctx.moveTo(prevFirst.x, prevFirst.y);
+          for (let i = 1; i < step.prevPoints.length; i += 1) {
+            const pt = worldToCanvas(step.prevPoints[i], transform);
+            ctx.lineTo(pt.x, pt.y);
+          }
+          ctx.stroke();
+        }
+
+        if (step.construction.links.length) {
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          for (const seg of step.construction.links) {
+            const a = worldToCanvas(seg.a, transform);
+            const b = worldToCanvas(seg.b, transform);
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+          }
+          ctx.stroke();
+
+          ctx.fillStyle = "#d04032";
+          for (const base of step.construction.bases) {
+            const pt = worldToCanvas(base, transform);
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 2.4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        ctx.strokeStyle = "#111111";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+
+        const first = worldToCanvas(points[0], transform);
+        ctx.moveTo(first.x, first.y);
+
+        for (let i = 1; i < points.length; i += 1) {
+          const pt = worldToCanvas(points[i], transform);
+          ctx.lineTo(pt.x, pt.y);
+        }
+
+        ctx.stroke();
+
+        if (params.showPoints) {
+          ctx.fillStyle = "#111111";
+          for (const p of points) {
+            const pt = worldToCanvas(p, transform);
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 2.2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+
+      function renderSteps(stepPolylines, params) {
+        ui.tiles.innerHTML = "";
+
+        stepPolylines.forEach((step, index) => {
+          const tile = document.createElement("div");
+          tile.className = "tile";
+
+          const canvas = document.createElement("canvas");
+          const label = document.createElement("div");
+          label.className = "label";
+          label.textContent = `Step ${index}`;
+
+          tile.appendChild(canvas);
+          tile.appendChild(label);
+          ui.tiles.appendChild(tile);
+
+          drawStep(canvas, step, params);
+        });
+      }
+
+      function update() {
+        const params = readParams();
+        updateReadouts(params);
+        const steps = generateSteps(params);
+        renderSteps(steps, params);
+      }
+
+      const inputs = document.querySelectorAll("input, select");
+      inputs.forEach((input) => input.addEventListener("input", update));
+      window.addEventListener("resize", update);
+
+      update();
+    </script>
+  </body>
+</html>
