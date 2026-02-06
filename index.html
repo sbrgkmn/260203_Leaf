@@ -54,14 +54,14 @@
         text-align: right;
       }
       .tiles {
-        display: flex;
+        display: grid;
+        grid-template-columns: repeat(4, max-content);
         gap: 16px;
         overflow-x: auto;
         padding-bottom: 8px;
       }
       .tile {
-        flex: 0 0 auto;
-        width: 220px;
+        width: 260px;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -92,7 +92,7 @@
         <label class="control">
           <span>Steps</span>
           <div class="control-row">
-            <input id="steps" type="range" min="0" max="8" step="1" value="5" />
+            <input id="steps" type="range" min="0" max="12" step="1" value="8" />
             <span class="value" id="stepsVal"></span>
           </div>
         </label>
@@ -185,8 +185,8 @@
     </div>
 
     <script>
-      const TILE_SIZE = 220;
-      const PADDING = 16;
+      const TILE_SIZE = 260;
+      const PADDING = 18;
       const EXPORT_SIZE = 640;
       const EXPORT_PADDING = 40;
       const BASE_AXIS_LENGTH = 1;
@@ -223,6 +223,12 @@
         const c = Math.cos(angle);
         const s = Math.sin(angle);
         return { x: v.x * c - v.y * s, y: v.x * s + v.y * c };
+      }
+
+      function segmentOrientation(polA, polB, fallback = 1) {
+        if (polA < 0 && polB >= 0) return 1;
+        if (polB < 0 && polA >= 0) return -1;
+        return fallback || 1;
       }
 
       function mirrorPoint(p) {
@@ -293,6 +299,9 @@
         ];
         steps.push({
           points: baseLine,
+          pointPolarity: [-1, 1],
+          segmentOrient: [1],
+          segmentPolarity: [1],
           construction: { bases: [], links: [], inserted: [] },
           prevPoints: null,
           meta: {
@@ -307,10 +316,31 @@
           const prev = steps[i - 1];
           const isExpansion = i % 2 === 1;
           const next = isExpansion
-            ? expandPolyline(prev.points, params, i, prev.meta.polarity)
-            : contractPolyline(prev.points, params, i, prev.meta.targets, prev.meta.center, prev.meta.polarity);
+            ? expandPolyline(
+                prev.points,
+                prev.segmentOrient,
+                prev.segmentPolarity,
+                prev.pointPolarity,
+                params,
+                i,
+                prev.meta.polarity
+              )
+            : contractPolyline(
+                prev.points,
+                prev.segmentOrient,
+                prev.segmentPolarity,
+                prev.pointPolarity,
+                params,
+                i,
+                prev.meta.targets,
+                prev.meta.center,
+                prev.meta.polarity
+              );
           steps.push({
             points: next.points,
+            pointPolarity: next.pointPolarity,
+            segmentOrient: next.segmentOrient,
+            segmentPolarity: next.segmentPolarity,
             construction: next.construction,
             prevPoints: prev.points,
             meta: next.meta,
@@ -320,10 +350,21 @@
         return steps;
       }
 
-      function expandPolyline(points, params, stepIndex, prevPolarity) {
+      function expandPolyline(
+        points,
+        segmentOrient,
+        segmentPolarity,
+        pointPolarity,
+        params,
+        stepIndex,
+        prevPolarity
+      ) {
         if (!points || points.length < 2) {
           return {
             points: points ? points.slice() : [],
+            pointPolarity: pointPolarity ? pointPolarity.slice() : [],
+            segmentOrient: segmentOrient ? segmentOrient.slice() : [],
+            segmentPolarity: segmentPolarity ? segmentPolarity.slice() : [],
             construction: { bases: [], links: [], inserted: [] },
             meta: {
               type: "expansion",
@@ -341,6 +382,21 @@
         }
 
         const newPoints = [points[0]];
+        const polIn =
+          pointPolarity && pointPolarity.length === points.length
+            ? pointPolarity
+            : new Array(points.length).fill(0);
+        const orientIn =
+          segmentOrient && segmentOrient.length === points.length - 1
+            ? segmentOrient
+            : new Array(points.length - 1).fill(1);
+        const sideIn =
+          segmentPolarity && segmentPolarity.length === points.length - 1
+            ? segmentPolarity
+            : new Array(points.length - 1).fill(1);
+        const newPolarity = [polIn[0] ?? 0];
+        const newSegmentOrient = [];
+        const newSegmentPolarity = [];
         const tBase = clamp(params.position, 0, 1);
         const intensity = clamp(params.intensity, 0, 1);
         const angleBase = (params.angle * Math.PI) / 180;
@@ -353,6 +409,10 @@
         for (let i = 0; i < points.length - 1; i += 1) {
           const p0 = points[i];
           const p1 = points[i + 1];
+          const pol0 = polIn[i] ?? 0;
+          const pol1 = polIn[i + 1] ?? 0;
+          const orient = segmentOrientation(pol0, pol1, orientIn[i] ?? 1);
+          const side = sideIn[i] ?? 1;
           const dx = p1.x - p0.x;
           const dy = p1.y - p0.y;
           const len = Math.hypot(dx, dy);
@@ -360,10 +420,13 @@
           if (len < 1e-9) {
             newPoints.push({ x: p0.x, y: p0.y });
             newPoints.push({ x: p1.x, y: p1.y });
+            newPolarity.push(pol0, pol1);
+            newSegmentOrient.push(orient, orient);
+            newSegmentPolarity.push(side, side);
             continue;
           }
 
-          let t = tBase;
+          let t = orient === -1 ? 1 - tBase : tBase;
           let angle = angleBase;
           let magnitude = len * intensity;
 
@@ -378,9 +441,15 @@
           }
 
           const base = { x: p0.x + dx * t, y: p0.y + dy * t };
-          const dir = { x: dx / len, y: dy / len };
-          let perp = { x: dir.y, y: -dir.x };
-          perp = rotateVec(perp, angle);
+          const dirRaw = { x: dx / len, y: dy / len };
+          let outward = { x: dirRaw.y, y: -dirRaw.x };
+          if (side < 0) {
+            outward = { x: -outward.x, y: -outward.y };
+          }
+          let perp = rotateVec(outward, angle * orient);
+          if (perp.x * outward.x + perp.y * outward.y < 0) {
+            perp = { x: -perp.x, y: -perp.y };
+          }
 
           const pNew = {
             x: base.x + perp.x * magnitude,
@@ -396,6 +465,11 @@
 
           newPoints.push(pNew);
           newPoints.push(p1);
+          newPolarity.push(1, pol1);
+          const orientA = segmentOrientation(pol0, 1, orient);
+          const orientB = segmentOrientation(1, pol1, orient);
+          newSegmentOrient.push(orientA, orientB);
+          newSegmentPolarity.push(side, side);
         }
 
         const basePoints = construction.bases;
@@ -413,6 +487,9 @@
 
         return {
           points: newPoints,
+          pointPolarity: newPolarity,
+          segmentOrient: newSegmentOrient,
+          segmentPolarity: newSegmentPolarity,
           construction,
           meta: {
             type: "expansion",
@@ -431,10 +508,23 @@
         };
       }
 
-      function contractPolyline(points, params, stepIndex, targets, center, prevPolarity) {
+      function contractPolyline(
+        points,
+        segmentOrient,
+        segmentPolarity,
+        pointPolarity,
+        params,
+        stepIndex,
+        targets,
+        center,
+        prevPolarity
+      ) {
         if (!points || points.length < 2) {
           return {
             points: points ? points.slice() : [],
+            pointPolarity: pointPolarity ? pointPolarity.slice() : [],
+            segmentOrient: segmentOrient ? segmentOrient.slice() : [],
+            segmentPolarity: segmentPolarity ? segmentPolarity.slice() : [],
             construction: { bases: [], links: [], inserted: [] },
             meta: {
               type: "contraction",
@@ -452,6 +542,21 @@
 
         const fallback = center || { x: 0, y: 0 };
         const newPoints = [points[0]];
+        const polIn =
+          pointPolarity && pointPolarity.length === points.length
+            ? pointPolarity
+            : new Array(points.length).fill(0);
+        const orientIn =
+          segmentOrient && segmentOrient.length === points.length - 1
+            ? segmentOrient
+            : new Array(points.length - 1).fill(1);
+        const sideIn =
+          segmentPolarity && segmentPolarity.length === points.length - 1
+            ? segmentPolarity
+            : new Array(points.length - 1).fill(1);
+        const newPolarity = [polIn[0] ?? 0];
+        const newSegmentOrient = [];
+        const newSegmentPolarity = [];
         const tBase = clamp(params.contractionPosition, 0, 1);
         const intensity = clamp(params.contractionIntensity, 0, 1);
         const construction = { bases: [], links: [], inserted: [] };
@@ -461,6 +566,10 @@
         for (let i = 0; i < points.length - 1; i += 1) {
           const p0 = points[i];
           const p1 = points[i + 1];
+          const pol0 = polIn[i] ?? 0;
+          const pol1 = polIn[i + 1] ?? 0;
+          const orient = segmentOrientation(pol0, pol1, orientIn[i] ?? 1);
+          const side = sideIn[i] ?? 1;
           const dx = p1.x - p0.x;
           const dy = p1.y - p0.y;
           const len = Math.hypot(dx, dy);
@@ -468,6 +577,9 @@
           if (len < 1e-9) {
             newPoints.push({ x: p0.x, y: p0.y });
             newPoints.push({ x: p1.x, y: p1.y });
+            newPolarity.push(pol0, pol1);
+            newSegmentOrient.push(orient, orient);
+            newSegmentPolarity.push(side, side);
             continue;
           }
 
@@ -486,10 +598,18 @@
           contractionLinks.push({ a: pNew, b: target });
           newPoints.push(pNew);
           newPoints.push(p1);
+          newPolarity.push(-1, pol1);
+          const orientA = segmentOrientation(pol0, -1, orient);
+          const orientB = segmentOrientation(-1, pol1, orient);
+          newSegmentOrient.push(orientA, orientB);
+          newSegmentPolarity.push(side, side);
         }
 
         return {
           points: newPoints,
+          pointPolarity: newPolarity,
+          segmentOrient: newSegmentOrient,
+          segmentPolarity: newSegmentPolarity,
           construction,
           meta: {
             type: "contraction",

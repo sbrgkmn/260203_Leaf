@@ -8,7 +8,7 @@ A small HTML5 Canvas web app that visualizes a parametric recursive curve with a
 - Construction overlays (evaluation points, offset links, contraction target links)
 - Polarity visualization for expansion (red) and contraction (green) points
 - Deterministic jitter option
-- Export per-step PNGs
+- Export per-step PNGs (640x640)
 
 ## Getting Started
 1. Start a local server in this folder:
