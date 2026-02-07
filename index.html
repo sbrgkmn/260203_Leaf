@@ -295,6 +295,13 @@
           </label>
 
           <label class="control">
+            <span>Show Form</span>
+            <div class="control-row">
+              <input id="showForm" type="checkbox" />
+            </div>
+          </label>
+
+          <label class="control">
             <span>Show Construction Lines</span>
             <div class="control-row">
               <input id="showConstructionLines" type="checkbox" />
@@ -341,6 +348,14 @@
             <div class="control-row">
               <input id="jitterAmount" type="range" min="0.1" max="0.9" step="0.01" value="0.10" />
               <span class="value" id="jitterVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Smoothing</span>
+            <div class="control-row">
+              <input id="smoothing" type="range" min="0" max="1" step="0.01" value="0" />
+              <span class="value" id="smoothingVal"></span>
             </div>
           </label>
 
@@ -392,6 +407,7 @@
         expansionMinEdgeLength: document.getElementById("expansionMinEdgeLength"),
         expansionMinEdgeLengthVal: document.getElementById("expansionMinEdgeLengthVal"),
         showConstructionPoints: document.getElementById("showConstructionPoints"),
+        showForm: document.getElementById("showForm"),
         showConstructionLines: document.getElementById("showConstructionLines"),
         showAxis: document.getElementById("showAxis"),
         showEdgeIds: document.getElementById("showEdgeIds"),
@@ -400,6 +416,8 @@
         jitter: document.getElementById("jitter"),
         jitterAmount: document.getElementById("jitterAmount"),
         jitterVal: document.getElementById("jitterVal"),
+        smoothing: document.getElementById("smoothing"),
+        smoothingVal: document.getElementById("smoothingVal"),
         tiles: document.getElementById("tiles"),
         finalCanvas: document.getElementById("finalCanvas"),
         exportSteps: document.getElementById("exportSteps"),
@@ -467,6 +485,19 @@
         return x - Math.floor(x);
       }
 
+      function buildFormTriangles(points, targets) {
+        if (!points || points.length < 2 || !targets || targets.length !== points.length - 1) {
+          return [];
+        }
+        const tris = [];
+        for (let i = 0; i < points.length - 1; i += 1) {
+          const center = targets[i];
+          if (!center) continue;
+          tris.push({ a: center, b: points[i], c: points[i + 1] });
+        }
+        return tris;
+      }
+
       function snapshotAxes(axes) {
         return axes.map((axis) => ({
           id: axis.id,
@@ -521,6 +552,7 @@
           expansionStage,
           enableExpansionStage: ui.enableExpansionStage.checked,
           showConstructionPoints: ui.showConstructionPoints.checked,
+          showForm: ui.showForm.checked,
           showConstructionLines: ui.showConstructionLines.checked,
           showAxis: ui.showAxis.checked,
           showEdgeIds: ui.showEdgeIds.checked,
@@ -528,6 +560,7 @@
           stopNegNeg: ui.stopNegNeg.checked,
           jitter: ui.jitter.checked,
           jitterAmount: parseFloat(ui.jitterAmount.value),
+          smoothing: parseFloat(ui.smoothing.value),
         };
       }
 
@@ -555,6 +588,7 @@
         ui.expansionIntensityB.disabled = expansionDisabled;
         ui.expansionMinEdgeLength.disabled = expansionDisabled;
         ui.jitterVal.textContent = params.jitterAmount.toFixed(2);
+        ui.smoothingVal.textContent = params.smoothing.toFixed(2);
         ui.jitterAmount.disabled = !params.jitter;
       }
 
@@ -562,6 +596,19 @@
 
       function generateSteps(params, stepCountHint = 0) {
         const steps = [];
+        let persistedContractionTriangles = [];
+        const attachFormTriangles = (stepObj) => {
+          if (!stepObj || !stepObj.meta) return stepObj;
+          const currentTriangles =
+            stepObj.meta.type === "expansion" && stepObj.meta.expansionTriangles?.length
+              ? stepObj.meta.expansionTriangles
+              : buildFormTriangles(stepObj.points, stepObj.meta.targets);
+          stepObj.meta.formTriangles = currentTriangles.concat(persistedContractionTriangles);
+          if (stepObj.meta.type === "contraction") {
+            persistedContractionTriangles = persistedContractionTriangles.concat(currentTriangles);
+          }
+          return stepObj;
+        };
         const baseLine = [
           { x: 0, y: -0.5 },
           { x: 0, y: 0.5 },
@@ -587,7 +634,7 @@
         const initialPointRule = ["seed", "seed"];
         const initialPointAxis = [0, 0];
         const initialNodes = buildNodeGraph(baseLine, initialPointRule, initialPointAxis, []);
-        steps.push({
+        steps.push(attachFormTriangles({
           points: baseLine,
           pointPolarity: [-1, 1],
           pointAxis: initialPointAxis,
@@ -607,7 +654,7 @@
             polarity: { pos: [{ ...baseLine[1] }], neg: [{ ...baseLine[0] }], posLinks: [] },
             graph: { nodes: initialNodes, axes: snapshotAxes(axisState.axes) },
           },
-        });
+        }));
 
         let stepIndex = 1;
         const stageSequence = [
@@ -660,7 +707,7 @@
               axisState
             );
             axisState = expansion.axisState;
-            steps.push({
+            steps.push(attachFormTriangles({
               points: expansion.points,
               pointPolarity: expansion.pointPolarity,
               pointAxis: expansion.pointAxis,
@@ -673,7 +720,7 @@
               construction: expansion.construction,
               prevPoints: prev.points,
               meta: expansion.meta,
-            });
+            }));
             stageStepCount += 1;
             const expansionCount = expansion.meta?.expansionPoints?.length ?? 0;
             if (expansionCount === 0) {
@@ -707,7 +754,7 @@
                   axisState
                 );
                 axisState = forcedExpansion.axisState;
-                steps.push({
+                steps.push(attachFormTriangles({
                   points: forcedExpansion.points,
                   pointPolarity: forcedExpansion.pointPolarity,
                   pointAxis: forcedExpansion.pointAxis,
@@ -720,7 +767,7 @@
                   construction: forcedExpansion.construction,
                   prevPoints: prev.points,
                   meta: forcedExpansion.meta,
-                });
+                }));
                 stageStepCount += 1;
               }
               break;
@@ -765,7 +812,7 @@
               axisState
             );
             axisState = contraction.axisState;
-            steps.push({
+            steps.push(attachFormTriangles({
               points: contraction.points,
               pointPolarity: contraction.pointPolarity,
               pointAxis: contraction.pointAxis,
@@ -778,7 +825,7 @@
               construction: contraction.construction,
               prevPoints: prevAfterExpansion.points,
               meta: contraction.meta,
-            });
+            }));
             stageStepCount += 1;
 
             stepIndex += 1;
@@ -806,7 +853,7 @@
                   axisState
                 );
                 axisState = finalExpansion.axisState;
-                steps.push({
+                steps.push(attachFormTriangles({
                   points: finalExpansion.points,
                   pointPolarity: finalExpansion.pointPolarity,
                   pointAxis: finalExpansion.pointAxis,
@@ -819,7 +866,7 @@
                   construction: finalExpansion.construction,
                   prevPoints: prevFinal.points,
                   meta: finalExpansion.meta,
-                });
+                }));
                 stageStepCount += 1;
               }
               break;
@@ -928,6 +975,7 @@
         const construction = { bases: [], links: [], inserted: [] };
         const expansionPoints = [];
         const targets = [];
+        const expansionTriangles = [];
         const expansionLinks = [];
         const axisLinks = [];
         const insertedMeta = [];
@@ -1002,6 +1050,7 @@
             newSegmentActive.push(false, false);
             newSegmentGroup.push(groupId, groupId);
             newSegmentAxis.push(parentAxisId, parentAxisId);
+            targets.push(null, null);
             continue;
           }
 
@@ -1079,6 +1128,10 @@
           expansionPoints.push(pNew);
           expansionLinks.push({ a: baseAxis, b: pNew });
           targets.push(baseAxis, baseAxis);
+          expansionTriangles.push(
+            { a: baseAxis, b: p0, c: pNew },
+            { a: baseAxis, b: pNew, c: p1 }
+          );
 
           newPoints.push(pNew);
           newPoints.push(p1);
@@ -1136,6 +1189,7 @@
             center,
             expansionPoints,
             targets,
+            expansionTriangles,
             axisLinks,
             graph: {
               nodes: buildNodeGraph(newPoints, newPointRule, newPointAxis, insertedMeta),
@@ -1247,6 +1301,7 @@
         const construction = { bases: [], links: [], inserted: [] };
         const contractionPoints = [];
         const contractionLinks = [];
+        const nextTargets = [];
         const axisLinks = [];
         const insertedMeta = [];
 
@@ -1290,6 +1345,8 @@
           const len = Math.hypot(dx, dy);
           const groupId = groupIn[i] ?? 0;
           const isActive = activeIn[i] ?? true;
+          const rawTarget = targets && i < targets.length ? targets[i] : undefined;
+          const target = rawTarget === undefined ? fallback : rawTarget;
 
           if (len < 1e-9) {
             newPoints.push({ x: p0.x, y: p0.y });
@@ -1302,6 +1359,7 @@
             newSegmentActive.push(false, false);
             newSegmentGroup.push(groupId, groupId);
             newSegmentAxis.push(parentAxisId, parentAxisId);
+            nextTargets.push(target, target);
             continue;
           }
 
@@ -1315,11 +1373,11 @@
             newSegmentActive.push(false);
             newSegmentGroup.push(groupId);
             newSegmentAxis.push(parentAxisId);
+            nextTargets.push(target);
             continue;
           }
 
           const base = { x: p0.x + dx * tBase, y: p0.y + dy * tBase };
-          const target = targets && targets[i] ? targets[i] : fallback;
           const toCenter = { x: target.x - base.x, y: target.y - base.y };
           const pNew = {
             x: base.x + toCenter.x * intensity,
@@ -1383,6 +1441,7 @@
           }
           newSegmentGroup.push(groupA, groupB);
           newSegmentAxis.push(axisId, axisId);
+          nextTargets.push(target, target);
           newPointAxis.push(pointAxisIn[i + 1] ?? parentAxisId);
           newPointRule.push(pointRuleIn[i + 1] ?? "carry");
         }
@@ -1402,7 +1461,7 @@
           meta: {
             type: "contraction",
             center: fallback,
-            targets: targets || [],
+            targets: nextTargets,
             axisLinks,
             graph: {
               nodes: buildNodeGraph(newPoints, newPointRule, newPointAxis, insertedMeta),
@@ -1474,6 +1533,107 @@
         return { x, y };
       }
 
+      function drawBoundaryPath(ctx, points, transform, smoothing) {
+        if (!points || points.length < 2) return;
+        const t = clamp(smoothing ?? 0, 0, 1);
+        const cpts = points.map((p) => worldToCanvas(p, transform));
+        if (t <= 1e-6 || cpts.length < 3) {
+          ctx.beginPath();
+          ctx.moveTo(cpts[0].x, cpts[0].y);
+          for (let i = 1; i < cpts.length; i += 1) {
+            ctx.lineTo(cpts[i].x, cpts[i].y);
+          }
+          return;
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(cpts[0].x, cpts[0].y);
+        const m01 = {
+          x: (cpts[0].x + cpts[1].x) * 0.5,
+          y: (cpts[0].y + cpts[1].y) * 0.5,
+        };
+        const firstAnchor = {
+          x: cpts[0].x + (m01.x - cpts[0].x) * t,
+          y: cpts[0].y + (m01.y - cpts[0].y) * t,
+        };
+        ctx.lineTo(firstAnchor.x, firstAnchor.y);
+        for (let i = 1; i < cpts.length - 1; i += 1) {
+          const ctrl = cpts[i];
+          const mid = {
+            x: (cpts[i].x + cpts[i + 1].x) * 0.5,
+            y: (cpts[i].y + cpts[i + 1].y) * 0.5,
+          };
+          const end = {
+            x: cpts[i].x + (mid.x - cpts[i].x) * t,
+            y: cpts[i].y + (mid.y - cpts[i].y) * t,
+          };
+          ctx.quadraticCurveTo(ctrl.x, ctrl.y, end.x, end.y);
+        }
+        const last = cpts[cpts.length - 1];
+        ctx.lineTo(last.x, last.y);
+      }
+
+      function drawFormTriangles(ctx, triangles, transform, mirrorAll = false) {
+        if (!triangles || triangles.length === 0) return;
+        ctx.beginPath();
+        for (const tri of triangles) {
+          const a = mirrorAll ? mirrorPoint(tri.a) : tri.a;
+          const b = mirrorAll ? mirrorPoint(tri.b) : tri.b;
+          const c = mirrorAll ? mirrorPoint(tri.c) : tri.c;
+          const pa = worldToCanvas(a, transform);
+          const pb = worldToCanvas(b, transform);
+          const pc = worldToCanvas(c, transform);
+          ctx.moveTo(pa.x, pa.y);
+          ctx.lineTo(pb.x, pb.y);
+          ctx.lineTo(pc.x, pc.y);
+          ctx.closePath();
+        }
+      }
+
+      function fillFormTriangles(ctx, triangles, transform, mirrorAll = false) {
+        drawFormTriangles(ctx, triangles, transform, mirrorAll);
+        ctx.fill();
+      }
+
+      function strokeFormTriangles(ctx, triangles, transform, mirrorAll = false) {
+        drawFormTriangles(ctx, triangles, transform, mirrorAll);
+        ctx.stroke();
+      }
+
+      function drawFormLayer(ctx, step, points, transform, style, edgesOnly = false) {
+        const currentTriangles = buildFormTriangles(points, step?.meta?.targets);
+        const formTriangles = step?.meta?.formTriangles;
+        const fillTriangles = formTriangles && formTriangles.length ? formTriangles : currentTriangles;
+        const strokeTriangles = fillTriangles;
+        if (!fillTriangles || fillTriangles.length === 0) return;
+        const outlineStroke = "rgba(0, 0, 0, 0.5)";
+        const outlineWidth = 0.7;
+        if (!edgesOnly) {
+          ctx.fillStyle = style.formFill;
+        }
+        if (SYMMETRIC_DISPLAY) {
+          if (!edgesOnly) {
+            fillFormTriangles(ctx, fillTriangles, transform, false);
+            fillFormTriangles(ctx, fillTriangles, transform, true);
+          }
+          if (strokeTriangles && strokeTriangles.length > 0) {
+            ctx.strokeStyle = outlineStroke;
+            ctx.lineWidth = outlineWidth;
+            strokeFormTriangles(ctx, strokeTriangles, transform, false);
+            strokeFormTriangles(ctx, strokeTriangles, transform, true);
+          }
+        } else {
+          if (!edgesOnly) {
+            fillFormTriangles(ctx, fillTriangles, transform, false);
+          }
+          if (strokeTriangles && strokeTriangles.length > 0) {
+            ctx.strokeStyle = outlineStroke;
+            ctx.lineWidth = outlineWidth;
+            strokeFormTriangles(ctx, strokeTriangles, transform, false);
+          }
+        }
+      }
+
       function drawStepToContext(ctx, step, params, size, padding, isExport = false) {
         ctx.clearRect(0, 0, size, size);
         ctx.fillStyle = "#ffffff";
@@ -1495,6 +1655,7 @@
               mainWidth: 2.2,
               prevWidth: 1.2,
               constructionWidth: 1.0,
+              formFill: "rgba(0, 0, 0, 0.35)",
               axisStroke: "rgba(0, 0, 0, 0.2)",
               axisWidth: 1.1,
               baseRadius: 3.2,
@@ -1512,6 +1673,7 @@
               mainWidth: 1.2,
               prevWidth: 0.8,
               constructionWidth: 0.9,
+              formFill: "rgba(0, 0, 0, 0.35)",
               axisStroke: "rgba(0, 0, 0, 0.2)",
               axisWidth: 0.9,
               baseRadius: 2.4,
@@ -1555,15 +1717,14 @@
             ? [step.prevPoints, mirrorPoints(step.prevPoints)]
             : [step.prevPoints];
           prevSets.forEach((pts) => {
-            ctx.beginPath();
-            const prevFirst = worldToCanvas(pts[0], transform);
-            ctx.moveTo(prevFirst.x, prevFirst.y);
-            for (let i = 1; i < pts.length; i += 1) {
-              const pt = worldToCanvas(pts[i], transform);
-              ctx.lineTo(pt.x, pt.y);
-            }
+            drawBoundaryPath(ctx, pts, transform, params.smoothing);
             ctx.stroke();
           });
+        }
+
+        if (params.showForm && step.meta) {
+          drawFormLayer(ctx, step, points, transform, style, false);
+          return;
         }
 
         if (params.showConstructionPoints && step.meta) {
@@ -1589,13 +1750,7 @@
         ctx.lineWidth = style.mainWidth;
         const pointSets = SYMMETRIC_DISPLAY ? [points, mirrorPoints(points)] : [points];
         pointSets.forEach((pts) => {
-          ctx.beginPath();
-          const first = worldToCanvas(pts[0], transform);
-          ctx.moveTo(first.x, first.y);
-          for (let i = 1; i < pts.length; i += 1) {
-            const pt = worldToCanvas(pts[i], transform);
-            ctx.lineTo(pt.x, pt.y);
-          }
+          drawBoundaryPath(ctx, pts, transform, params.smoothing);
           ctx.stroke();
         });
 
