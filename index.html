@@ -90,14 +90,6 @@
 
       <div class="controls">
         <label class="control">
-          <span>Steps</span>
-          <div class="control-row">
-            <input id="steps" type="range" min="0" max="12" step="1" value="8" />
-            <span class="value" id="stepsVal"></span>
-          </div>
-        </label>
-
-        <label class="control">
           <span>Position t</span>
           <div class="control-row">
             <input id="position" type="range" min="0" max="1" step="0.01" value="0.5" />
@@ -138,6 +130,14 @@
         </label>
 
         <label class="control">
+          <span>Min Edge Length</span>
+          <div class="control-row">
+            <input id="minEdgeLength" type="range" min="0" max="0.5" step="0.01" value="0.08" />
+            <span class="value" id="minEdgeLengthVal"></span>
+          </div>
+        </label>
+
+        <label class="control">
           <span>Show Construction Points</span>
           <div class="control-row">
             <input id="showConstructionPoints" type="checkbox" checked />
@@ -152,6 +152,13 @@
         </label>
 
         <label class="control">
+          <span>Show Axis</span>
+          <div class="control-row">
+            <input id="showAxis" type="checkbox" checked />
+          </div>
+        </label>
+
+        <label class="control">
           <span>Show Polarity Points</span>
           <div class="control-row">
             <input id="showPolarityPoints" type="checkbox" checked />
@@ -161,7 +168,7 @@
         <label class="control">
           <span>Stop Neg-Neg Edges</span>
           <div class="control-row">
-            <input id="stopNegNeg" type="checkbox" />
+            <input id="stopNegNeg" type="checkbox" checked />
           </div>
         </label>
 
@@ -200,24 +207,25 @@
       const SYMMETRIC_DISPLAY = true;
 
       const ui = {
-        steps: document.getElementById("steps"),
         position: document.getElementById("position"),
         intensity: document.getElementById("intensity"),
         angle: document.getElementById("angle"),
         contractionPosition: document.getElementById("contractionPosition"),
         contractionIntensity: document.getElementById("contractionIntensity"),
+        minEdgeLength: document.getElementById("minEdgeLength"),
         showConstructionPoints: document.getElementById("showConstructionPoints"),
         showConstructionLines: document.getElementById("showConstructionLines"),
+        showAxis: document.getElementById("showAxis"),
         showPolarityPoints: document.getElementById("showPolarityPoints"),
         stopNegNeg: document.getElementById("stopNegNeg"),
         jitter: document.getElementById("jitter"),
         jitterAmount: document.getElementById("jitterAmount"),
-        stepsVal: document.getElementById("stepsVal"),
         positionVal: document.getElementById("positionVal"),
         intensityVal: document.getElementById("intensityVal"),
         angleVal: document.getElementById("angleVal"),
         contractionPositionVal: document.getElementById("contractionPositionVal"),
         contractionIntensityVal: document.getElementById("contractionIntensityVal"),
+        minEdgeLengthVal: document.getElementById("minEdgeLengthVal"),
         jitterVal: document.getElementById("jitterVal"),
         tiles: document.getElementById("tiles"),
         exportSteps: document.getElementById("exportSteps"),
@@ -231,6 +239,19 @@
         const c = Math.cos(angle);
         const s = Math.sin(angle);
         return { x: v.x * c - v.y * s, y: v.x * s + v.y * c };
+      }
+
+      function normalizeVec(v, fallback = { x: 0, y: 1 }) {
+        const len = Math.hypot(v.x, v.y);
+        if (len < 1e-9) return { x: fallback.x, y: fallback.y };
+        return { x: v.x / len, y: v.y / len };
+      }
+
+      function projectPointToAxis(p, axis) {
+        if (!axis || !axis.anchor || !axis.dir) return { x: p.x, y: p.y };
+        const v = { x: p.x - axis.anchor.x, y: p.y - axis.anchor.y };
+        const t = v.x * axis.dir.x + v.y * axis.dir.y;
+        return { x: axis.anchor.x + axis.dir.x * t, y: axis.anchor.y + axis.dir.y * t };
       }
 
       function segmentOrientation(polA, polB, fallback = 1) {
@@ -272,16 +293,48 @@
         return x - Math.floor(x);
       }
 
+      function snapshotAxes(axes) {
+        return axes.map((axis) => ({
+          id: axis.id,
+          parent: axis.parent,
+          anchor: { x: axis.anchor.x, y: axis.anchor.y },
+          tip: { x: axis.tip.x, y: axis.tip.y },
+          dir: { x: axis.dir.x, y: axis.dir.y },
+        }));
+      }
+
+      function buildNodeGraph(points, pointRule, pointAxis, insertedMeta) {
+        const nodes = [];
+        for (let i = 0; i < points.length; i += 1) {
+          const p = points[i];
+          const meta = insertedMeta[i] || {};
+          nodes.push({
+            id: i,
+            p: { x: p.x, y: p.y },
+            left: i > 0 ? i - 1 : null,
+            right: i < points.length - 1 ? i + 1 : null,
+            rule: (pointRule && pointRule[i]) || meta.rule || "carry",
+            axisId: pointAxis && pointAxis[i] != null ? pointAxis[i] : meta.axisId ?? null,
+            parentAxisId: meta.parentAxisId ?? null,
+            base: meta.base ? { x: meta.base.x, y: meta.base.y } : null,
+            edgeBase: meta.edgeBase ? { x: meta.edgeBase.x, y: meta.edgeBase.y } : null,
+            edge: meta.edge ?? null,
+          });
+        }
+        return nodes;
+      }
+
       function readParams() {
         const params = {
-          steps: parseInt(ui.steps.value, 10),
           position: parseFloat(ui.position.value),
           intensity: parseFloat(ui.intensity.value),
           angle: parseFloat(ui.angle.value),
           contractionPosition: parseFloat(ui.contractionPosition.value),
           contractionIntensity: parseFloat(ui.contractionIntensity.value),
+          minEdgeLength: parseFloat(ui.minEdgeLength.value),
           showConstructionPoints: ui.showConstructionPoints.checked,
           showConstructionLines: ui.showConstructionLines.checked,
+          showAxis: ui.showAxis.checked,
           showPolarityPoints: ui.showPolarityPoints.checked,
           stopNegNeg: ui.stopNegNeg.checked,
           jitter: ui.jitter.checked,
@@ -291,12 +344,12 @@
       }
 
       function updateReadouts(params) {
-        ui.stepsVal.textContent = params.steps;
         ui.positionVal.textContent = params.position.toFixed(2);
         ui.intensityVal.textContent = params.intensity.toFixed(2);
         ui.angleVal.textContent = params.angle.toFixed(0);
         ui.contractionPositionVal.textContent = params.contractionPosition.toFixed(2);
         ui.contractionIntensityVal.textContent = params.contractionIntensity.toFixed(2);
+        ui.minEdgeLengthVal.textContent = params.minEdgeLength.toFixed(2);
         ui.jitterVal.textContent = params.jitterAmount.toFixed(2);
         ui.jitterAmount.disabled = !params.jitter;
       }
@@ -307,58 +360,113 @@
           { x: 0, y: -0.5 },
           { x: 0, y: 0.5 },
         ];
+        const maxAutoSteps = 120;
+        const rootAxisDir = normalizeVec({
+          x: baseLine[1].x - baseLine[0].x,
+          y: baseLine[1].y - baseLine[0].y,
+        });
+        let axisState = {
+          axes: [
+            {
+              id: 0,
+              parent: null,
+              anchor: { x: baseLine[0].x, y: baseLine[0].y },
+              tip: { x: baseLine[1].x, y: baseLine[1].y },
+              dir: rootAxisDir,
+            },
+          ],
+          segmentAxis: [0],
+        };
+        const initialPointRule = ["seed", "seed"];
+        const initialPointAxis = [0, 0];
+        const initialNodes = buildNodeGraph(baseLine, initialPointRule, initialPointAxis, []);
         steps.push({
           points: baseLine,
           pointPolarity: [-1, 1],
+          pointAxis: initialPointAxis,
+          pointRule: initialPointRule,
           segmentOrient: [1],
           segmentPolarity: [1],
           segmentActive: [true],
+          segmentAxis: axisState.segmentAxis,
           construction: { bases: [], links: [], inserted: [] },
           prevPoints: null,
           meta: {
             type: "initial",
             center: null,
             targets: [],
+            axisLinks: [],
             polarity: { pos: [{ ...baseLine[1] }], neg: [{ ...baseLine[0] }], posLinks: [] },
+            graph: { nodes: initialNodes, axes: snapshotAxes(axisState.axes) },
           },
         });
 
-        for (let i = 1; i <= params.steps; i += 1) {
-          const prev = steps[i - 1];
-          const isExpansion = i % 2 === 1;
-          const next = isExpansion
-            ? expandPolyline(
-                prev.points,
-                prev.segmentActive,
-                prev.segmentOrient,
-                prev.segmentPolarity,
-                prev.pointPolarity,
-                params,
-                i,
-                prev.meta.polarity
-              )
-            : contractPolyline(
-                prev.points,
-                prev.segmentActive,
-                prev.segmentOrient,
-                prev.segmentPolarity,
-                prev.pointPolarity,
-                params,
-                i,
-                prev.meta.targets,
-                prev.meta.center,
-                prev.meta.polarity
-              );
+        let stepIndex = 1;
+        while (stepIndex <= maxAutoSteps) {
+          const prev = steps[steps.length - 1];
+          const expansion = expandPolyline(
+            prev.points,
+            prev.segmentActive,
+            prev.segmentOrient,
+            prev.segmentPolarity,
+            prev.pointPolarity,
+            prev.pointAxis,
+            prev.pointRule,
+            params,
+            stepIndex,
+            prev.meta.polarity,
+            axisState
+          );
+          axisState = expansion.axisState;
           steps.push({
-            points: next.points,
-            pointPolarity: next.pointPolarity,
-            segmentOrient: next.segmentOrient,
-            segmentPolarity: next.segmentPolarity,
-            segmentActive: next.segmentActive,
-            construction: next.construction,
+            points: expansion.points,
+            pointPolarity: expansion.pointPolarity,
+            pointAxis: expansion.pointAxis,
+            pointRule: expansion.pointRule,
+            segmentOrient: expansion.segmentOrient,
+            segmentPolarity: expansion.segmentPolarity,
+            segmentActive: expansion.segmentActive,
+            segmentAxis: expansion.segmentAxis,
+            construction: expansion.construction,
             prevPoints: prev.points,
-            meta: next.meta,
+            meta: expansion.meta,
           });
+          const expansionCount = expansion.meta?.expansionPoints?.length ?? 0;
+          if (expansionCount === 0) break;
+
+          stepIndex += 1;
+          if (stepIndex > maxAutoSteps) break;
+          const prevAfterExpansion = steps[steps.length - 1];
+          const contraction = contractPolyline(
+            prevAfterExpansion.points,
+            prevAfterExpansion.segmentActive,
+            prevAfterExpansion.segmentOrient,
+            prevAfterExpansion.segmentPolarity,
+            prevAfterExpansion.pointPolarity,
+            prevAfterExpansion.pointAxis,
+            prevAfterExpansion.pointRule,
+            params,
+            stepIndex,
+            prevAfterExpansion.meta.targets,
+            prevAfterExpansion.meta.center,
+            prevAfterExpansion.meta.polarity,
+            axisState
+          );
+          axisState = contraction.axisState;
+          steps.push({
+            points: contraction.points,
+            pointPolarity: contraction.pointPolarity,
+            pointAxis: contraction.pointAxis,
+            pointRule: contraction.pointRule,
+            segmentOrient: contraction.segmentOrient,
+            segmentPolarity: contraction.segmentPolarity,
+            segmentActive: contraction.segmentActive,
+            segmentAxis: contraction.segmentAxis,
+            construction: contraction.construction,
+            prevPoints: prevAfterExpansion.points,
+            meta: contraction.meta,
+          });
+          stepIndex += 1;
         }
 
         return steps;
@@ -370,23 +478,32 @@
         segmentOrient,
         segmentPolarity,
         pointPolarity,
+        pointAxis,
+        pointRule,
         params,
         stepIndex,
-        prevPolarity
+        prevPolarity,
+        axisState
       ) {
         if (!points || points.length < 2) {
           return {
             points: points ? points.slice() : [],
             pointPolarity: pointPolarity ? pointPolarity.slice() : [],
+            pointAxis: pointAxis ? pointAxis.slice() : [],
+            pointRule: pointRule ? pointRule.slice() : [],
             segmentOrient: segmentOrient ? segmentOrient.slice() : [],
             segmentPolarity: segmentPolarity ? segmentPolarity.slice() : [],
             segmentActive: segmentActive ? segmentActive.slice() : [],
+            segmentAxis: axisState?.segmentAxis ? axisState.segmentAxis.slice() : [],
             construction: { bases: [], links: [], inserted: [] },
+            axisState: axisState || { axes: [], segmentAxis: [] },
             meta: {
               type: "expansion",
               center: { x: 0, y: 0 },
               expansionPoints: [],
               targets: [],
+              axisLinks: [],
+              graph: { nodes: [], axes: snapshotAxes(axisState?.axes || []) },
               polarity: {
                 pos: prevPolarity?.pos ? prevPolarity.pos.slice() : [],
                 neg: prevPolarity?.neg ? prevPolarity.neg.slice() : [],
@@ -402,6 +519,14 @@
           pointPolarity && pointPolarity.length === points.length
             ? pointPolarity
             : new Array(points.length).fill(0);
+        const pointAxisIn =
+          pointAxis && pointAxis.length === points.length
+            ? pointAxis
+            : new Array(points.length).fill(null);
+        const pointRuleIn =
+          pointRule && pointRule.length === points.length
+            ? pointRule
+            : new Array(points.length).fill("carry");
         const activeIn =
           segmentActive && segmentActive.length === points.length - 1
             ? segmentActive
@@ -414,10 +539,20 @@
           segmentPolarity && segmentPolarity.length === points.length - 1
             ? segmentPolarity
             : new Array(points.length - 1).fill(1);
+        const segmentAxisIn =
+          axisState && axisState.segmentAxis && axisState.segmentAxis.length === points.length - 1
+            ? axisState.segmentAxis
+            : new Array(points.length - 1).fill(0);
+        const axesIn = axisState && axisState.axes ? axisState.axes : [];
+        const axes = axesIn.slice();
+        let parentAxis = axes[0];
         const newPolarity = [polIn[0] ?? 0];
+        const newPointAxis = [pointAxisIn[0] ?? null];
+        const newPointRule = [pointRuleIn[0] ?? "carry"];
         const newSegmentOrient = [];
         const newSegmentPolarity = [];
         const newSegmentActive = [];
+        const newSegmentAxis = [];
         const tBase = clamp(params.position, 0, 1);
         const intensity = clamp(params.intensity, 0, 1);
         const angleBase = (params.angle * Math.PI) / 180;
@@ -426,36 +561,81 @@
         const expansionPoints = [];
         const targets = [];
         const expansionLinks = [];
+        const axisLinks = [];
+        const insertedMeta = [];
 
         for (let i = 0; i < points.length - 1; i += 1) {
           const p0 = points[i];
           const p1 = points[i + 1];
           const pol0 = polIn[i] ?? 0;
           const pol1 = polIn[i + 1] ?? 0;
-          const isActive = activeIn[i] ?? true;
           const orient = segmentOrientation(pol0, pol1, orientIn[i] ?? 1);
           const side = sideIn[i] ?? 1;
+          let parentAxisId = null;
+          const isNegNeg = pol0 < 0 && pol1 < 0;
+          if (isNegNeg) {
+            if (pointAxisIn[i] != null) {
+              parentAxisId = pointAxisIn[i];
+            } else if (pointAxisIn[i + 1] != null) {
+              parentAxisId = pointAxisIn[i + 1];
+            }
+          }
+          const leftRule = pointRuleIn[i];
+          const rightRule = pointRuleIn[i + 1];
+          if (leftRule === "E" && rightRule !== "E") {
+            parentAxisId = pointAxisIn[i];
+          } else if (rightRule === "E" && leftRule !== "E") {
+            parentAxisId = pointAxisIn[i + 1];
+          } else if (leftRule === "E" && rightRule === "E") {
+            parentAxisId = pointAxisIn[i] ?? pointAxisIn[i + 1];
+          }
+          if (parentAxisId == null) {
+            if ((pol0 ?? 0) > 0 && pointAxisIn[i] != null) {
+              parentAxisId = pointAxisIn[i];
+            } else if ((pol1 ?? 0) > 0 && pointAxisIn[i + 1] != null) {
+              parentAxisId = pointAxisIn[i + 1];
+            } else {
+              parentAxisId = segmentAxisIn[i] ?? 0;
+            }
+          }
+          parentAxis = axes[parentAxisId] || axes[0];
           const dx = p1.x - p0.x;
           const dy = p1.y - p0.y;
           const len = Math.hypot(dx, dy);
+          const isActive = activeIn[i] ?? true;
           const stopEdge = params.stopNegNeg && pol0 < 0 && pol1 < 0;
 
           if (len < 1e-9) {
             newPoints.push({ x: p0.x, y: p0.y });
             newPoints.push({ x: p1.x, y: p1.y });
             newPolarity.push(pol0, pol1);
+            newPointAxis.push(pointAxisIn[i] ?? parentAxisId, pointAxisIn[i + 1] ?? parentAxisId);
+            newPointRule.push(pointRuleIn[i] ?? "carry", pointRuleIn[i + 1] ?? "carry");
             newSegmentOrient.push(orient, orient);
             newSegmentPolarity.push(side, side);
             newSegmentActive.push(false, false);
+            newSegmentAxis.push(parentAxisId, parentAxisId);
             continue;
           }
 
           if (!isActive || stopEdge) {
+            if (stopEdge) {
+              const leftIsC = pointRuleIn[i] === "C";
+              const rightIsC = pointRuleIn[i + 1] === "C";
+              if (leftIsC && pointAxisIn[i] != null) {
+                parentAxisId = pointAxisIn[i];
+              } else if (rightIsC && pointAxisIn[i + 1] != null) {
+                parentAxisId = pointAxisIn[i + 1];
+              }
+            }
             newPoints.push(p1);
             newPolarity.push(pol1);
+            newPointAxis.push(pointAxisIn[i + 1] ?? parentAxisId);
+            newPointRule.push(pointRuleIn[i + 1] ?? "carry");
             newSegmentOrient.push(orient);
             newSegmentPolarity.push(side);
             newSegmentActive.push(false);
+            newSegmentAxis.push(parentAxisId);
             targets.push(null);
             continue;
           }
@@ -474,7 +654,7 @@
             magnitude *= 1 + j3 * jitterAmount;
           }
 
-          const base = { x: p0.x + dx * t, y: p0.y + dy * t };
+          const baseEdge = { x: p0.x + dx * t, y: p0.y + dy * t };
           const dirRaw = { x: dx / len, y: dy / len };
           let outward = { x: dirRaw.y, y: -dirRaw.x };
           if (side < 0) {
@@ -485,26 +665,55 @@
             perp = { x: -perp.x, y: -perp.y };
           }
 
+          const baseAxis = projectPointToAxis(baseEdge, parentAxis);
           const pNew = {
-            x: base.x + perp.x * magnitude,
-            y: base.y + perp.y * magnitude,
+            x: baseAxis.x + perp.x * magnitude,
+            y: baseAxis.y + perp.y * magnitude,
           };
+          const axisAnchor = { x: baseAxis.x, y: baseAxis.y };
+          const axisDir = normalizeVec(
+            { x: pNew.x - axisAnchor.x, y: pNew.y - axisAnchor.y },
+            parentAxis?.dir || { x: 0, y: 1 }
+          );
+          const axisId = axes.length;
+          axes.push({
+            id: axisId,
+            parent: parentAxis ? parentAxis.id : null,
+            anchor: { x: axisAnchor.x, y: axisAnchor.y },
+            tip: { x: pNew.x, y: pNew.y },
+            dir: axisDir,
+          });
+          axisLinks.push({ a: axisAnchor, b: pNew });
 
-          construction.bases.push(base);
-          construction.links.push({ a: base, b: pNew });
+          construction.bases.push(baseAxis);
+          construction.links.push({ a: baseAxis, b: pNew });
           construction.inserted.push(pNew);
           expansionPoints.push(pNew);
-          expansionLinks.push({ a: base, b: pNew });
-          targets.push(base, base);
+          expansionLinks.push({ a: baseAxis, b: pNew });
+          targets.push(baseAxis, baseAxis);
 
           newPoints.push(pNew);
           newPoints.push(p1);
+          const newPointIndex = newPoints.length - 2;
+          insertedMeta[newPointIndex] = {
+            rule: "E",
+            axisId,
+            parentAxisId: parentAxis ? parentAxis.id : null,
+            base: { x: baseAxis.x, y: baseAxis.y },
+            edgeBase: { x: baseEdge.x, y: baseEdge.y },
+            edge: { a: i, b: i + 1 },
+          };
           newPolarity.push(1, pol1);
+          newPointAxis.push(axisId);
+          newPointRule.push("E");
           const orientA = segmentOrientation(pol0, 1, orient);
           const orientB = segmentOrientation(1, pol1, orient);
           newSegmentOrient.push(orientA, orientB);
           newSegmentPolarity.push(side, side);
           newSegmentActive.push(true, true);
+          newSegmentAxis.push(axisId, axisId);
+          newPointAxis.push(pointAxisIn[i + 1] ?? parentAxisId);
+          newPointRule.push(pointRuleIn[i + 1] ?? "carry");
         }
 
         const basePoints = construction.bases;
@@ -523,15 +732,24 @@
         return {
           points: newPoints,
           pointPolarity: newPolarity,
+          pointAxis: newPointAxis,
+          pointRule: newPointRule,
           segmentOrient: newSegmentOrient,
           segmentPolarity: newSegmentPolarity,
           segmentActive: newSegmentActive,
+          segmentAxis: newSegmentAxis,
           construction,
+          axisState: { axes, segmentAxis: newSegmentAxis },
           meta: {
             type: "expansion",
             center,
             expansionPoints,
             targets,
+            axisLinks,
+            graph: {
+              nodes: buildNodeGraph(newPoints, newPointRule, newPointAxis, insertedMeta),
+              axes: snapshotAxes(axes),
+            },
             polarity: {
               pos: (prevPolarity?.pos ? prevPolarity.pos.slice() : []).concat(expansionPoints),
               neg: prevPolarity?.neg ? prevPolarity.neg.slice() : [],
@@ -550,24 +768,33 @@
         segmentOrient,
         segmentPolarity,
         pointPolarity,
+        pointAxis,
+        pointRule,
         params,
         stepIndex,
         targets,
         center,
-        prevPolarity
+        prevPolarity,
+        axisState
       ) {
         if (!points || points.length < 2) {
           return {
             points: points ? points.slice() : [],
             pointPolarity: pointPolarity ? pointPolarity.slice() : [],
+            pointAxis: pointAxis ? pointAxis.slice() : [],
+            pointRule: pointRule ? pointRule.slice() : [],
             segmentOrient: segmentOrient ? segmentOrient.slice() : [],
             segmentPolarity: segmentPolarity ? segmentPolarity.slice() : [],
             segmentActive: segmentActive ? segmentActive.slice() : [],
+            segmentAxis: axisState?.segmentAxis ? axisState.segmentAxis.slice() : [],
             construction: { bases: [], links: [], inserted: [] },
+            axisState: axisState || { axes: [], segmentAxis: [] },
             meta: {
               type: "contraction",
               center: center || { x: 0, y: 0 },
               targets: [],
+              axisLinks: [],
+              graph: { nodes: [], axes: snapshotAxes(axisState?.axes || []) },
               polarity: {
                 pos: prevPolarity?.pos ? prevPolarity.pos.slice() : [],
                 neg: prevPolarity?.neg ? prevPolarity.neg.slice() : [],
@@ -584,6 +811,14 @@
           pointPolarity && pointPolarity.length === points.length
             ? pointPolarity
             : new Array(points.length).fill(0);
+        const pointAxisIn =
+          pointAxis && pointAxis.length === points.length
+            ? pointAxis
+            : new Array(points.length).fill(null);
+        const pointRuleIn =
+          pointRule && pointRule.length === points.length
+            ? pointRule
+            : new Array(points.length).fill("carry");
         const activeIn =
           segmentActive && segmentActive.length === points.length - 1
             ? segmentActive
@@ -596,44 +831,91 @@
           segmentPolarity && segmentPolarity.length === points.length - 1
             ? segmentPolarity
             : new Array(points.length - 1).fill(1);
+        const segmentAxisIn =
+          axisState && axisState.segmentAxis && axisState.segmentAxis.length === points.length - 1
+            ? axisState.segmentAxis
+            : new Array(points.length - 1).fill(0);
+        const axesIn = axisState && axisState.axes ? axisState.axes : [];
+        const axes = axesIn.slice();
         const newPolarity = [polIn[0] ?? 0];
+        const newPointAxis = [pointAxisIn[0] ?? null];
+        const newPointRule = [pointRuleIn[0] ?? "carry"];
         const newSegmentOrient = [];
         const newSegmentPolarity = [];
         const newSegmentActive = [];
+        const newSegmentAxis = [];
         const tBase = clamp(params.contractionPosition, 0, 1);
         const intensity = clamp(params.contractionIntensity, 0, 1);
         const construction = { bases: [], links: [], inserted: [] };
         const contractionPoints = [];
         const contractionLinks = [];
+        const axisLinks = [];
+        const insertedMeta = [];
 
         for (let i = 0; i < points.length - 1; i += 1) {
           const p0 = points[i];
           const p1 = points[i + 1];
           const pol0 = polIn[i] ?? 0;
           const pol1 = polIn[i + 1] ?? 0;
-          const isActive = activeIn[i] ?? true;
           const orient = segmentOrientation(pol0, pol1, orientIn[i] ?? 1);
           const side = sideIn[i] ?? 1;
+          let parentAxisId = null;
+          const isNegNeg = pol0 < 0 && pol1 < 0;
+          if (isNegNeg) {
+            if (pointAxisIn[i] != null) {
+              parentAxisId = pointAxisIn[i];
+            } else if (pointAxisIn[i + 1] != null) {
+              parentAxisId = pointAxisIn[i + 1];
+            }
+          }
+          const leftRule = pointRuleIn[i];
+          const rightRule = pointRuleIn[i + 1];
+          if (leftRule === "E" && rightRule !== "E") {
+            parentAxisId = pointAxisIn[i];
+          } else if (rightRule === "E" && leftRule !== "E") {
+            parentAxisId = pointAxisIn[i + 1];
+          } else if (leftRule === "E" && rightRule === "E") {
+            parentAxisId = pointAxisIn[i] ?? pointAxisIn[i + 1];
+          }
+          if (parentAxisId == null) {
+            if ((pol0 ?? 0) > 0 && pointAxisIn[i] != null) {
+              parentAxisId = pointAxisIn[i];
+            } else if ((pol1 ?? 0) > 0 && pointAxisIn[i + 1] != null) {
+              parentAxisId = pointAxisIn[i + 1];
+            } else {
+              parentAxisId = segmentAxisIn[i] ?? 0;
+            }
+          }
+          const parentAxis = axes[parentAxisId] || axes[0];
           const dx = p1.x - p0.x;
           const dy = p1.y - p0.y;
           const len = Math.hypot(dx, dy);
+          const minEdgeLength = Math.max(0, params.minEdgeLength ?? 0);
+          const lengthActive = len > minEdgeLength;
+          const isActive = (activeIn[i] ?? true) && lengthActive;
 
           if (len < 1e-9) {
             newPoints.push({ x: p0.x, y: p0.y });
             newPoints.push({ x: p1.x, y: p1.y });
             newPolarity.push(pol0, pol1);
+            newPointAxis.push(pointAxisIn[i] ?? parentAxisId, pointAxisIn[i + 1] ?? parentAxisId);
+            newPointRule.push(pointRuleIn[i] ?? "carry", pointRuleIn[i + 1] ?? "carry");
             newSegmentOrient.push(orient, orient);
             newSegmentPolarity.push(side, side);
             newSegmentActive.push(false, false);
+            newSegmentAxis.push(parentAxisId, parentAxisId);
             continue;
           }
 
           if (!isActive) {
             newPoints.push(p1);
             newPolarity.push(pol1);
+            newPointAxis.push(pointAxisIn[i + 1] ?? parentAxisId);
+            newPointRule.push(pointRuleIn[i + 1] ?? "carry");
             newSegmentOrient.push(orient);
             newSegmentPolarity.push(side);
             newSegmentActive.push(false);
+            newSegmentAxis.push(parentAxisId);
             continue;
           }
 
@@ -644,6 +926,19 @@
             x: base.x + toCenter.x * intensity,
             y: base.y + toCenter.y * intensity,
           };
+          const axisAnchor = target;
+          const axisDir = normalizeVec(
+            { x: pNew.x - axisAnchor.x, y: pNew.y - axisAnchor.y },
+            parentAxis?.dir || { x: 0, y: 1 }
+          );
+          const axisId = axes.length;
+          axes.push({
+            id: axisId,
+            parent: parentAxis ? parentAxis.id : null,
+            anchor: { x: axisAnchor.x, y: axisAnchor.y },
+            tip: { x: pNew.x, y: pNew.y },
+            dir: axisDir,
+          });
 
           construction.bases.push(base);
           construction.links.push({ a: base, b: pNew });
@@ -652,25 +947,47 @@
           contractionLinks.push({ a: pNew, b: target });
           newPoints.push(pNew);
           newPoints.push(p1);
+          const newPointIndex = newPoints.length - 2;
+          insertedMeta[newPointIndex] = {
+            rule: "C",
+            axisId,
+            parentAxisId,
+            base: { x: base.x, y: base.y },
+            edge: { a: i, b: i + 1 },
+          };
           newPolarity.push(-1, pol1);
+          newPointAxis.push(axisId);
+          newPointRule.push("C");
           const orientA = segmentOrientation(pol0, -1, orient);
           const orientB = segmentOrientation(-1, pol1, orient);
           newSegmentOrient.push(orientA, orientB);
           newSegmentPolarity.push(side, side);
           newSegmentActive.push(true, true);
+          newSegmentAxis.push(axisId, axisId);
+          newPointAxis.push(pointAxisIn[i + 1] ?? parentAxisId);
+          newPointRule.push(pointRuleIn[i + 1] ?? "carry");
         }
 
         return {
           points: newPoints,
           pointPolarity: newPolarity,
+          pointAxis: newPointAxis,
+          pointRule: newPointRule,
           segmentOrient: newSegmentOrient,
           segmentPolarity: newSegmentPolarity,
           segmentActive: newSegmentActive,
+          segmentAxis: newSegmentAxis,
           construction,
+          axisState: { axes, segmentAxis: newSegmentAxis },
           meta: {
             type: "contraction",
             center: fallback,
             targets: targets || [],
+            axisLinks,
+            graph: {
+              nodes: buildNodeGraph(newPoints, newPointRule, newPointAxis, insertedMeta),
+              axes: snapshotAxes(axes),
+            },
             polarity: {
               pos: prevPolarity?.pos ? prevPolarity.pos.slice() : [],
               neg: (prevPolarity?.neg ? prevPolarity.neg.slice() : []).concat(contractionPoints),
@@ -782,14 +1099,34 @@
               polarityRadius: 2.8,
             };
 
-        ctx.strokeStyle = style.axisStroke;
-        ctx.lineWidth = style.axisWidth;
-        ctx.beginPath();
-        const axisTop = worldToCanvas({ x: 0, y: 0.5 }, transform);
-        const axisBottom = worldToCanvas({ x: 0, y: -0.5 }, transform);
-        ctx.moveTo(axisTop.x, axisTop.y);
-        ctx.lineTo(axisBottom.x, axisBottom.y);
-        ctx.stroke();
+        if (params.showAxis) {
+          ctx.strokeStyle = style.axisStroke;
+          ctx.lineWidth = style.axisWidth;
+          ctx.beginPath();
+          const axisTop = worldToCanvas({ x: 0, y: 0.5 }, transform);
+          const axisBottom = worldToCanvas({ x: 0, y: -0.5 }, transform);
+          ctx.moveTo(axisTop.x, axisTop.y);
+          ctx.lineTo(axisBottom.x, axisBottom.y);
+          ctx.stroke();
+
+          if (step.meta && step.meta.axisLinks?.length) {
+            ctx.strokeStyle = style.axisStroke;
+            ctx.lineWidth = style.axisWidth;
+            const linkSets = SYMMETRIC_DISPLAY
+              ? [step.meta.axisLinks, mirrorSegments(step.meta.axisLinks)]
+              : [step.meta.axisLinks];
+            linkSets.forEach((segments) => {
+              ctx.beginPath();
+              for (const seg of segments) {
+                const a = worldToCanvas(seg.a, transform);
+                const b = worldToCanvas(seg.b, transform);
+                ctx.moveTo(a.x, a.y);
+                ctx.lineTo(b.x, b.y);
+              }
+              ctx.stroke();
+            });
+          }
+        }
 
         if (step.prevPoints && step.prevPoints.length >= 2) {
           ctx.strokeStyle = style.prevStroke;
