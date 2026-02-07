@@ -8,6 +8,7 @@ A small HTML5 Canvas web app that visualizes a parametric recursive curve with a
 - Construction overlays (evaluation points, offset links, contraction target links)
 - Polarity visualization for expansion (red) and contraction (green) points
 - Quadratic Bezier smoothing at expansion/contraction points
+- Filled form visualization with triangle persistence on even steps
 - Deterministic jitter option
 - Export per-step PNGs (640x640)
 - Optional stop for neg-neg edges during expansion
@@ -28,6 +29,7 @@ A small HTML5 Canvas web app that visualizes a parametric recursive curve with a
 - **Show Construction Lines**: toggles dashed construction links
 - **Show Polarity Points**: toggles red/green polarity markers
 - **Smoothing**: quadratic Bezier smoothing at expansion and contraction points
+- **Show Form**: filled black form visualization
 - **Stop Neg-Neg Edges**: stops expansion of edges with two negative endpoints
 - **Jitter**: toggles deterministic variation
 - **Jitter Amount**: strength of jitter when enabled

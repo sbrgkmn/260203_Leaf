@@ -148,21 +148,28 @@
         <label class="control">
           <span>Show Construction Points</span>
           <div class="control-row">
-            <input id="showConstructionPoints" type="checkbox" checked />
+            <input id="showConstructionPoints" type="checkbox" />
           </div>
         </label>
 
         <label class="control">
           <span>Show Construction Lines</span>
           <div class="control-row">
-            <input id="showConstructionLines" type="checkbox" checked />
+            <input id="showConstructionLines" type="checkbox" />
           </div>
         </label>
 
         <label class="control">
           <span>Show Polarity Points</span>
           <div class="control-row">
-            <input id="showPolarityPoints" type="checkbox" checked />
+            <input id="showPolarityPoints" type="checkbox" />
+          </div>
+        </label>
+
+        <label class="control">
+          <span>Show Form</span>
+          <div class="control-row">
+            <input id="showForm" type="checkbox" />
           </div>
         </label>
 
@@ -218,6 +225,7 @@
         showConstructionPoints: document.getElementById("showConstructionPoints"),
         showConstructionLines: document.getElementById("showConstructionLines"),
         showPolarityPoints: document.getElementById("showPolarityPoints"),
+        showForm: document.getElementById("showForm"),
         stopNegNeg: document.getElementById("stopNegNeg"),
         jitter: document.getElementById("jitter"),
         jitterAmount: document.getElementById("jitterAmount"),
@@ -282,6 +290,19 @@
         return x - Math.floor(x);
       }
 
+      function buildFormTriangles(points, targets) {
+        if (!points || points.length < 2 || !targets || targets.length !== points.length - 1) {
+          return [];
+        }
+        const tris = [];
+        for (let i = 0; i < points.length - 1; i += 1) {
+          const center = targets[i];
+          if (!center) continue;
+          tris.push({ a: center, b: points[i], c: points[i + 1] });
+        }
+        return tris;
+      }
+
       function readParams() {
         const params = {
           steps: parseInt(ui.steps.value, 10),
@@ -294,6 +315,7 @@
           showConstructionPoints: ui.showConstructionPoints.checked,
           showConstructionLines: ui.showConstructionLines.checked,
           showPolarityPoints: ui.showPolarityPoints.checked,
+          showForm: ui.showForm.checked,
           stopNegNeg: ui.stopNegNeg.checked,
           jitter: ui.jitter.checked,
           jitterAmount: parseFloat(ui.jitterAmount.value),
@@ -315,6 +337,7 @@
 
       function generateSteps(params) {
         const steps = [];
+        let persistedEvenTriangles = [];
         const baseLine = [
           { x: 0, y: -0.5 },
           { x: 0, y: 0.5 },
@@ -361,6 +384,12 @@
                 prev.meta.center,
                 prev.meta.polarity
               );
+          const currentTriangles = buildFormTriangles(next.points, next.meta.targets);
+          const formTriangles = currentTriangles.concat(persistedEvenTriangles);
+          next.meta.formTriangles = formTriangles;
+          if (!isExpansion) {
+            persistedEvenTriangles = persistedEvenTriangles.concat(currentTriangles);
+          }
           steps.push({
             points: next.points,
             pointPolarity: next.pointPolarity,
@@ -617,6 +646,7 @@
         const construction = { bases: [], links: [], inserted: [] };
         const contractionPoints = [];
         const contractionLinks = [];
+        const nextTargets = [];
 
         for (let i = 0; i < points.length - 1; i += 1) {
           const p0 = points[i];
@@ -629,6 +659,8 @@
           const dx = p1.x - p0.x;
           const dy = p1.y - p0.y;
           const len = Math.hypot(dx, dy);
+          const rawTarget = targets && i < targets.length ? targets[i] : undefined;
+          const target = rawTarget === undefined ? fallback : rawTarget;
 
           if (len < 1e-9) {
             newPoints.push({ x: p0.x, y: p0.y });
@@ -637,6 +669,7 @@
             newSegmentOrient.push(orient, orient);
             newSegmentPolarity.push(side, side);
             newSegmentActive.push(false, false);
+            nextTargets.push(target, target);
             continue;
           }
 
@@ -646,11 +679,11 @@
             newSegmentOrient.push(orient);
             newSegmentPolarity.push(side);
             newSegmentActive.push(false);
+            nextTargets.push(target);
             continue;
           }
 
           const base = { x: p0.x + dx * tBase, y: p0.y + dy * tBase };
-          const target = targets && targets[i] ? targets[i] : fallback;
           const toCenter = { x: target.x - base.x, y: target.y - base.y };
           const pNew = {
             x: base.x + toCenter.x * intensity,
@@ -670,6 +703,7 @@
           newSegmentOrient.push(orientA, orientB);
           newSegmentPolarity.push(side, side);
           newSegmentActive.push(true, true);
+          nextTargets.push(target, target);
         }
 
         return {
@@ -682,7 +716,7 @@
           meta: {
             type: "contraction",
             center: fallback,
-            targets: targets || [],
+            targets: nextTargets,
             polarity: {
               pos: prevPolarity?.pos ? prevPolarity.pos.slice() : [],
               neg: (prevPolarity?.neg ? prevPolarity.neg.slice() : []).concat(contractionPoints),
@@ -805,6 +839,7 @@
               centerFill: "rgb(0, 0, 0)",
               posFill: "rgb(208, 64, 50)",
               negFill: "rgb(29, 111, 66)",
+              formFill: "rgba(0, 0, 0, 0.35)",
               mainWidth: 2.2,
               prevWidth: 1.2,
               constructionWidth: 1.0,
@@ -822,6 +857,7 @@
               centerFill: "#111111",
               posFill: "#d04032",
               negFill: "#1d6f42",
+              formFill: "rgba(0, 0, 0, 0.35)",
               mainWidth: 1.2,
               prevWidth: 0.8,
               constructionWidth: 0.9,
@@ -841,7 +877,54 @@
         ctx.lineTo(axisBottom.x, axisBottom.y);
         ctx.stroke();
 
-        if (step.prevPoints && step.prevPoints.length >= 2) {
+        const hasSmoothing = params.smoothing > 0;
+        let smoothedPath = null;
+        if (hasSmoothing) {
+          if (SYMMETRIC_DISPLAY) {
+            const right = points;
+            const left = mirrorPoints(points).slice().reverse();
+            smoothedPath = right.concat(left.slice(1));
+          } else {
+            smoothedPath = points;
+          }
+        }
+
+        if (params.showForm && step.meta) {
+          const triangles = step.meta.formTriangles || buildFormTriangles(points, step.meta.targets);
+          ctx.fillStyle = style.formFill;
+          const outlineStroke = "rgba(0, 0, 0, 0.5)";
+          const outlineWidth = 0.7;
+
+          const drawTriangles = (tris, mirrorAll) => {
+            if (!tris || tris.length === 0) return;
+            ctx.beginPath();
+            for (const tri of tris) {
+              const a = mirrorAll ? mirrorPoint(tri.a) : tri.a;
+              const b = mirrorAll ? mirrorPoint(tri.b) : tri.b;
+              const c = mirrorAll ? mirrorPoint(tri.c) : tri.c;
+              const pa = worldToCanvas(a, transform);
+              const pb = worldToCanvas(b, transform);
+              const pc = worldToCanvas(c, transform);
+              ctx.moveTo(pa.x, pa.y);
+              ctx.lineTo(pb.x, pb.y);
+              ctx.lineTo(pc.x, pc.y);
+              ctx.closePath();
+            }
+            ctx.fill();
+            ctx.strokeStyle = outlineStroke;
+            ctx.lineWidth = outlineWidth;
+            ctx.stroke();
+          };
+
+          if (SYMMETRIC_DISPLAY) {
+            drawTriangles(triangles, false);
+            drawTriangles(triangles, true);
+          } else {
+            drawTriangles(triangles, false);
+          }
+        }
+
+        if (params.showConstructionLines && step.prevPoints && step.prevPoints.length >= 2) {
           ctx.strokeStyle = style.prevStroke;
           ctx.lineWidth = style.prevWidth;
           const prevSets = SYMMETRIC_DISPLAY
