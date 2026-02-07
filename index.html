@@ -22,17 +22,68 @@
         flex-direction: column;
         gap: 16px;
         padding: 16px;
+        height: 100vh;
+        min-height: 0;
       }
       .title {
         font-size: 18px;
         letter-spacing: 0.2px;
         margin: 0;
       }
-      .controls {
+      .workspace {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 12px 16px;
+        grid-template-columns: minmax(0, 1fr) 430px;
+        gap: 16px;
+        min-height: 0;
+        flex: 1;
+      }
+      .steps-pane {
+        min-height: 0;
+        overflow: auto;
+      }
+      .sidebar {
+        min-height: 0;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding-right: 2px;
+      }
+      .final-preview {
+        width: 400px;
+        display: flex;
+        flex-direction: column;
         align-items: center;
+        gap: 8px;
+      }
+      .final-preview canvas {
+        width: 400px;
+        height: 400px;
+        border: 1px solid #111111;
+        background: #ffffff;
+      }
+      .final-preview .label {
+        font-size: 12px;
+        color: #222222;
+      }
+      .controls {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .panel {
+        border: 1px solid #111111;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: #fcfcfc;
+      }
+      .panel-title {
+        font-size: 13px;
+        font-weight: 700;
+        margin: 0 0 2px 0;
+        letter-spacing: 0.2px;
       }
       .control {
         display: flex;
@@ -55,10 +106,10 @@
       }
       .tiles {
         display: grid;
-        grid-template-columns: repeat(4, max-content);
+        grid-template-columns: repeat(6, 400px);
         gap: 16px;
-        overflow-x: auto;
-        padding-bottom: 8px;
+        align-content: start;
+        padding-bottom: 12px;
       }
       .tile {
         width: 400px;
@@ -82,113 +133,242 @@
         cursor: pointer;
         font-size: 12px;
       }
+      @media (max-width: 1400px) {
+        .page {
+          height: auto;
+          min-height: 0;
+        }
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+        .steps-pane,
+        .sidebar {
+          overflow: visible;
+        }
+      }
     </style>
   </head>
   <body>
     <div class="page">
       <h1 class="title">260203_Leaf</h1>
 
-      <div class="controls">
-        <label class="control">
-          <span>Steps</span>
-          <div class="control-row">
-            <input id="steps" type="range" min="0" max="12" step="1" value="8" />
-            <span class="value" id="stepsVal"></span>
+      <div class="workspace">
+        <div class="steps-pane">
+          <div class="tiles" id="tiles"></div>
+        </div>
+        <div class="sidebar">
+          <div class="final-preview">
+            <canvas id="finalCanvas"></canvas>
+            <div class="label">Final Step</div>
           </div>
-        </label>
+          <div class="controls">
+        <div class="panel">
+          <div class="panel-title">Contraction Stage</div>
 
-        <label class="control">
-          <span>Position t</span>
-          <div class="control-row">
-            <input id="position" type="range" min="0" max="1" step="0.01" value="0.5" />
-            <span class="value" id="positionVal"></span>
-          </div>
-        </label>
+          <label class="control">
+            <span>Development Mode</span>
+            <div class="control-row">
+              <select id="contractionEdgeMode">
+                <option value="all">All Edges</option>
+                <option value="edge2">Edge 2</option>
+                <option value="edge4">Edge 4</option>
+              </select>
+            </div>
+          </label>
 
-        <label class="control">
-          <span>Intensity</span>
-          <div class="control-row">
-            <input id="intensity" type="range" min="0" max="1" step="0.01" value="0.35" />
-            <span class="value" id="intensityVal"></span>
-          </div>
-        </label>
+          <label class="control">
+            <span>Position</span>
+            <div class="control-row">
+              <input id="contractionPositionA" type="range" min="0.1" max="0.9" step="0.01" value="0.50" />
+              <span class="value" id="contractionPositionAVal"></span>
+            </div>
+          </label>
 
-        <label class="control">
-          <span>Angle (deg)</span>
-          <div class="control-row">
-            <input id="angle" type="range" min="-180" max="180" step="1" value="0" />
-            <span class="value" id="angleVal"></span>
-          </div>
-        </label>
+          <label class="control">
+            <span>Intensity</span>
+            <div class="control-row">
+              <input id="contractionIntensityA" type="range" min="0.1" max="0.9" step="0.01" value="0.35" />
+              <span class="value" id="contractionIntensityAVal"></span>
+            </div>
+          </label>
 
-        <label class="control">
-          <span>Contraction Position tc</span>
-          <div class="control-row">
-            <input id="contractionPosition" type="range" min="0" max="1" step="0.01" value="0.5" />
-            <span class="value" id="contractionPositionVal"></span>
-          </div>
-        </label>
+          <label class="control">
+            <span>Angle</span>
+            <div class="control-row">
+              <input id="contractionAngleA" type="range" min="1" max="89" step="1" value="15" />
+              <span class="value" id="contractionAngleAVal"></span>
+            </div>
+          </label>
 
-        <label class="control">
-          <span>Contraction Intensity</span>
-          <div class="control-row">
-            <input id="contractionIntensity" type="range" min="0" max="1" step="0.01" value="0.5" />
-            <span class="value" id="contractionIntensityVal"></span>
-          </div>
-        </label>
+          <label class="control">
+            <span>Contract Position</span>
+            <div class="control-row">
+              <input id="contractionPositionB" type="range" min="0.1" max="0.9" step="0.01" value="0.50" />
+              <span class="value" id="contractionPositionBVal"></span>
+            </div>
+          </label>
 
-        <label class="control">
-          <span>Show Construction Points</span>
-          <div class="control-row">
-            <input id="showConstructionPoints" type="checkbox" checked />
-          </div>
-        </label>
+          <label class="control">
+            <span>Contract Intensity</span>
+            <div class="control-row">
+              <input id="contractionIntensityB" type="range" min="0.1" max="0.9" step="0.01" value="0.50" />
+              <span class="value" id="contractionIntensityBVal"></span>
+            </div>
+          </label>
 
-        <label class="control">
-          <span>Show Construction Lines</span>
-          <div class="control-row">
-            <input id="showConstructionLines" type="checkbox" checked />
-          </div>
-        </label>
+          <label class="control">
+            <span>Min Edge Length</span>
+            <div class="control-row">
+              <input id="contractionMinEdgeLength" type="range" min="0.1" max="0.9" step="0.01" value="0.10" />
+              <span class="value" id="contractionMinEdgeLengthVal"></span>
+            </div>
+          </label>
+        </div>
 
-        <label class="control">
-          <span>Show Polarity Points</span>
-          <div class="control-row">
-            <input id="showPolarityPoints" type="checkbox" checked />
-          </div>
-        </label>
+        <div class="panel">
+          <div class="panel-title">Expansion Stage</div>
 
-        <label class="control">
-          <span>Stop Neg-Neg Edges</span>
-          <div class="control-row">
-            <input id="stopNegNeg" type="checkbox" />
-          </div>
-        </label>
+          <label class="control">
+            <span>Apply Expansion Stage</span>
+            <div class="control-row">
+              <input id="enableExpansionStage" type="checkbox" />
+            </div>
+          </label>
 
-        <label class="control">
-          <span>Jitter</span>
-          <div class="control-row">
-            <input id="jitter" type="checkbox" />
-          </div>
-        </label>
+          <label class="control">
+            <span>Position</span>
+            <div class="control-row">
+              <input id="expansionPositionA" type="range" min="0.1" max="0.9" step="0.01" value="0.50" />
+              <span class="value" id="expansionPositionAVal"></span>
+            </div>
+          </label>
 
-        <label class="control">
-          <span>Jitter Amount</span>
-          <div class="control-row">
-            <input id="jitterAmount" type="range" min="0" max="0.3" step="0.01" value="0.08" />
-            <span class="value" id="jitterVal"></span>
-          </div>
-        </label>
+          <label class="control">
+            <span>Intensity</span>
+            <div class="control-row">
+              <input id="expansionIntensityA" type="range" min="0.1" max="0.9" step="0.01" value="0.35" />
+              <span class="value" id="expansionIntensityAVal"></span>
+            </div>
+          </label>
 
-        <label class="control">
-          <span>Export</span>
-          <div class="control-row">
-            <button id="exportSteps" type="button">Export PNG Steps</button>
+          <label class="control">
+            <span>Angle</span>
+            <div class="control-row">
+              <input id="expansionAngleA" type="range" min="1" max="89" step="1" value="15" />
+              <span class="value" id="expansionAngleAVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Contract Position</span>
+            <div class="control-row">
+              <input id="expansionPositionB" type="range" min="0.1" max="0.9" step="0.01" value="0.50" />
+              <span class="value" id="expansionPositionBVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Contract Intensity</span>
+            <div class="control-row">
+              <input id="expansionIntensityB" type="range" min="0.1" max="0.9" step="0.01" value="0.50" />
+              <span class="value" id="expansionIntensityBVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Min Edge Length</span>
+            <div class="control-row">
+              <input id="expansionMinEdgeLength" type="range" min="0.1" max="0.9" step="0.01" value="0.10" />
+              <span class="value" id="expansionMinEdgeLengthVal"></span>
+            </div>
+          </label>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">Display</div>
+
+          <label class="control">
+            <span>Show Construction Points</span>
+            <div class="control-row">
+              <input id="showConstructionPoints" type="checkbox" />
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Show Form</span>
+            <div class="control-row">
+              <input id="showForm" type="checkbox" />
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Show Construction Lines</span>
+            <div class="control-row">
+              <input id="showConstructionLines" type="checkbox" />
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Show Axis</span>
+            <div class="control-row">
+              <input id="showAxis" type="checkbox" />
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Show Edge IDs</span>
+            <div class="control-row">
+              <input id="showEdgeIds" type="checkbox" />
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Show Polarity Points</span>
+            <div class="control-row">
+              <input id="showPolarityPoints" type="checkbox" />
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Stop Neg-Neg Edges</span>
+            <div class="control-row">
+              <input id="stopNegNeg" type="checkbox" checked />
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Jitter</span>
+            <div class="control-row">
+              <input id="jitter" type="checkbox" />
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Jitter Amount</span>
+            <div class="control-row">
+              <input id="jitterAmount" type="range" min="0.1" max="0.9" step="0.01" value="0.10" />
+              <span class="value" id="jitterVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Smoothing</span>
+            <div class="control-row">
+              <input id="smoothing" type="range" min="0" max="1" step="0.01" value="0" />
+              <span class="value" id="smoothingVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Export</span>
+            <div class="control-row">
+              <button id="exportSteps" type="button">Export PNG Steps</button>
+            </div>
+          </label>
+        </div>
           </div>
-        </label>
+        </div>
       </div>
-
-      <div class="tiles" id="tiles"></div>
     </div>
 
     <script>
@@ -200,26 +380,46 @@
       const SYMMETRIC_DISPLAY = true;
 
       const ui = {
-        steps: document.getElementById("steps"),
-        position: document.getElementById("position"),
-        intensity: document.getElementById("intensity"),
-        angle: document.getElementById("angle"),
-        contractionPosition: document.getElementById("contractionPosition"),
-        contractionIntensity: document.getElementById("contractionIntensity"),
+        contractionEdgeMode: document.getElementById("contractionEdgeMode"),
+        contractionPositionA: document.getElementById("contractionPositionA"),
+        contractionPositionAVal: document.getElementById("contractionPositionAVal"),
+        contractionIntensityA: document.getElementById("contractionIntensityA"),
+        contractionIntensityAVal: document.getElementById("contractionIntensityAVal"),
+        contractionAngleA: document.getElementById("contractionAngleA"),
+        contractionAngleAVal: document.getElementById("contractionAngleAVal"),
+        contractionPositionB: document.getElementById("contractionPositionB"),
+        contractionPositionBVal: document.getElementById("contractionPositionBVal"),
+        contractionIntensityB: document.getElementById("contractionIntensityB"),
+        contractionIntensityBVal: document.getElementById("contractionIntensityBVal"),
+        contractionMinEdgeLength: document.getElementById("contractionMinEdgeLength"),
+        contractionMinEdgeLengthVal: document.getElementById("contractionMinEdgeLengthVal"),
+        expansionPositionA: document.getElementById("expansionPositionA"),
+        expansionPositionAVal: document.getElementById("expansionPositionAVal"),
+        enableExpansionStage: document.getElementById("enableExpansionStage"),
+        expansionIntensityA: document.getElementById("expansionIntensityA"),
+        expansionIntensityAVal: document.getElementById("expansionIntensityAVal"),
+        expansionAngleA: document.getElementById("expansionAngleA"),
+        expansionAngleAVal: document.getElementById("expansionAngleAVal"),
+        expansionPositionB: document.getElementById("expansionPositionB"),
+        expansionPositionBVal: document.getElementById("expansionPositionBVal"),
+        expansionIntensityB: document.getElementById("expansionIntensityB"),
+        expansionIntensityBVal: document.getElementById("expansionIntensityBVal"),
+        expansionMinEdgeLength: document.getElementById("expansionMinEdgeLength"),
+        expansionMinEdgeLengthVal: document.getElementById("expansionMinEdgeLengthVal"),
         showConstructionPoints: document.getElementById("showConstructionPoints"),
+        showForm: document.getElementById("showForm"),
         showConstructionLines: document.getElementById("showConstructionLines"),
+        showAxis: document.getElementById("showAxis"),
+        showEdgeIds: document.getElementById("showEdgeIds"),
         showPolarityPoints: document.getElementById("showPolarityPoints"),
         stopNegNeg: document.getElementById("stopNegNeg"),
         jitter: document.getElementById("jitter"),
         jitterAmount: document.getElementById("jitterAmount"),
-        stepsVal: document.getElementById("stepsVal"),
-        positionVal: document.getElementById("positionVal"),
-        intensityVal: document.getElementById("intensityVal"),
-        angleVal: document.getElementById("angleVal"),
-        contractionPositionVal: document.getElementById("contractionPositionVal"),
-        contractionIntensityVal: document.getElementById("contractionIntensityVal"),
         jitterVal: document.getElementById("jitterVal"),
+        smoothing: document.getElementById("smoothing"),
+        smoothingVal: document.getElementById("smoothingVal"),
         tiles: document.getElementById("tiles"),
+        finalCanvas: document.getElementById("finalCanvas"),
         exportSteps: document.getElementById("exportSteps"),
       };
 
@@ -231,6 +431,19 @@
         const c = Math.cos(angle);
         const s = Math.sin(angle);
         return { x: v.x * c - v.y * s, y: v.x * s + v.y * c };
+      }
+
+      function normalizeVec(v, fallback = { x: 0, y: 1 }) {
+        const len = Math.hypot(v.x, v.y);
+        if (len < 1e-9) return { x: fallback.x, y: fallback.y };
+        return { x: v.x / len, y: v.y / len };
+      }
+
+      function projectPointToAxis(p, axis) {
+        if (!axis || !axis.anchor || !axis.dir) return { x: p.x, y: p.y };
+        const v = { x: p.x - axis.anchor.x, y: p.y - axis.anchor.y };
+        const t = v.x * axis.dir.x + v.y * axis.dir.y;
+        return { x: axis.anchor.x + axis.dir.x * t, y: axis.anchor.y + axis.dir.y * t };
       }
 
       function segmentOrientation(polA, polB, fallback = 1) {
@@ -272,93 +485,394 @@
         return x - Math.floor(x);
       }
 
+      function buildFormTriangles(points, targets) {
+        if (!points || points.length < 2 || !targets || targets.length !== points.length - 1) {
+          return [];
+        }
+        const tris = [];
+        for (let i = 0; i < points.length - 1; i += 1) {
+          const center = targets[i];
+          if (!center) continue;
+          tris.push({ a: center, b: points[i], c: points[i + 1] });
+        }
+        return tris;
+      }
+
+      function snapshotAxes(axes) {
+        return axes.map((axis) => ({
+          id: axis.id,
+          parent: axis.parent,
+          anchor: { x: axis.anchor.x, y: axis.anchor.y },
+          tip: { x: axis.tip.x, y: axis.tip.y },
+          dir: { x: axis.dir.x, y: axis.dir.y },
+        }));
+      }
+
+      function buildNodeGraph(points, pointRule, pointAxis, insertedMeta) {
+        const nodes = [];
+        for (let i = 0; i < points.length; i += 1) {
+          const p = points[i];
+          const meta = insertedMeta[i] || {};
+          nodes.push({
+            id: i,
+            p: { x: p.x, y: p.y },
+            left: i > 0 ? i - 1 : null,
+            right: i < points.length - 1 ? i + 1 : null,
+            rule: (pointRule && pointRule[i]) || meta.rule || "carry",
+            axisId: pointAxis && pointAxis[i] != null ? pointAxis[i] : meta.axisId ?? null,
+            parentAxisId: meta.parentAxisId ?? null,
+            base: meta.base ? { x: meta.base.x, y: meta.base.y } : null,
+            edgeBase: meta.edgeBase ? { x: meta.edgeBase.x, y: meta.edgeBase.y } : null,
+            edge: meta.edge ?? null,
+          });
+        }
+        return nodes;
+      }
+
       function readParams() {
-        const params = {
-          steps: parseInt(ui.steps.value, 10),
-          position: parseFloat(ui.position.value),
-          intensity: parseFloat(ui.intensity.value),
-          angle: parseFloat(ui.angle.value),
-          contractionPosition: parseFloat(ui.contractionPosition.value),
-          contractionIntensity: parseFloat(ui.contractionIntensity.value),
+        const contractionStage = {
+          mode: ui.contractionEdgeMode.value,
+          position: parseFloat(ui.contractionPositionA.value),
+          intensity: parseFloat(ui.contractionIntensityA.value),
+          angle: parseFloat(ui.contractionAngleA.value),
+          contractionPosition: parseFloat(ui.contractionPositionB.value),
+          contractionIntensity: parseFloat(ui.contractionIntensityB.value),
+          minEdgeLength: parseFloat(ui.contractionMinEdgeLength.value),
+        };
+        const expansionStage = {
+          position: parseFloat(ui.expansionPositionA.value),
+          intensity: parseFloat(ui.expansionIntensityA.value),
+          angle: parseFloat(ui.expansionAngleA.value),
+          contractionPosition: parseFloat(ui.expansionPositionB.value),
+          contractionIntensity: parseFloat(ui.expansionIntensityB.value),
+          minEdgeLength: parseFloat(ui.expansionMinEdgeLength.value),
+        };
+        return {
+          contractionStage,
+          expansionStage,
+          enableExpansionStage: ui.enableExpansionStage.checked,
           showConstructionPoints: ui.showConstructionPoints.checked,
+          showForm: ui.showForm.checked,
           showConstructionLines: ui.showConstructionLines.checked,
+          showAxis: ui.showAxis.checked,
+          showEdgeIds: ui.showEdgeIds.checked,
           showPolarityPoints: ui.showPolarityPoints.checked,
           stopNegNeg: ui.stopNegNeg.checked,
           jitter: ui.jitter.checked,
           jitterAmount: parseFloat(ui.jitterAmount.value),
+          smoothing: parseFloat(ui.smoothing.value),
         };
-        return params;
       }
 
       function updateReadouts(params) {
-        ui.stepsVal.textContent = params.steps;
-        ui.positionVal.textContent = params.position.toFixed(2);
-        ui.intensityVal.textContent = params.intensity.toFixed(2);
-        ui.angleVal.textContent = params.angle.toFixed(0);
-        ui.contractionPositionVal.textContent = params.contractionPosition.toFixed(2);
-        ui.contractionIntensityVal.textContent = params.contractionIntensity.toFixed(2);
+        ui.contractionPositionAVal.textContent = params.contractionStage.position.toFixed(2);
+        ui.contractionIntensityAVal.textContent = params.contractionStage.intensity.toFixed(2);
+        ui.contractionAngleAVal.textContent = params.contractionStage.angle.toFixed(0);
+        ui.contractionPositionBVal.textContent = params.contractionStage.contractionPosition.toFixed(2);
+        ui.contractionIntensityBVal.textContent =
+          params.contractionStage.contractionIntensity.toFixed(2);
+        ui.contractionMinEdgeLengthVal.textContent =
+          params.contractionStage.minEdgeLength.toFixed(2);
+        ui.expansionPositionAVal.textContent = params.expansionStage.position.toFixed(2);
+        ui.expansionIntensityAVal.textContent = params.expansionStage.intensity.toFixed(2);
+        ui.expansionAngleAVal.textContent = params.expansionStage.angle.toFixed(0);
+        ui.expansionPositionBVal.textContent = params.expansionStage.contractionPosition.toFixed(2);
+        ui.expansionIntensityBVal.textContent =
+          params.expansionStage.contractionIntensity.toFixed(2);
+        ui.expansionMinEdgeLengthVal.textContent = params.expansionStage.minEdgeLength.toFixed(2);
+        const expansionDisabled = !params.enableExpansionStage;
+        ui.expansionPositionA.disabled = expansionDisabled;
+        ui.expansionIntensityA.disabled = expansionDisabled;
+        ui.expansionAngleA.disabled = expansionDisabled;
+        ui.expansionPositionB.disabled = expansionDisabled;
+        ui.expansionIntensityB.disabled = expansionDisabled;
+        ui.expansionMinEdgeLength.disabled = expansionDisabled;
         ui.jitterVal.textContent = params.jitterAmount.toFixed(2);
+        ui.smoothingVal.textContent = params.smoothing.toFixed(2);
         ui.jitterAmount.disabled = !params.jitter;
       }
 
-      function generateSteps(params) {
+      let lastStepCount = 0;
+
+      function generateSteps(params, stepCountHint = 0) {
         const steps = [];
+        let persistedContractionTriangles = [];
+        const attachFormTriangles = (stepObj) => {
+          if (!stepObj || !stepObj.meta) return stepObj;
+          const currentTriangles =
+            stepObj.meta.type === "expansion" && stepObj.meta.expansionTriangles?.length
+              ? stepObj.meta.expansionTriangles
+              : buildFormTriangles(stepObj.points, stepObj.meta.targets);
+          stepObj.meta.formTriangles = currentTriangles.concat(persistedContractionTriangles);
+          if (stepObj.meta.type === "contraction") {
+            persistedContractionTriangles = persistedContractionTriangles.concat(currentTriangles);
+          }
+          return stepObj;
+        };
         const baseLine = [
           { x: 0, y: -0.5 },
           { x: 0, y: 0.5 },
         ];
-        steps.push({
+        const maxAutoSteps = params.enableExpansionStage ? 480 : 240;
+        const maxStageSteps = 120;
+        const rootAxisDir = normalizeVec({
+          x: baseLine[1].x - baseLine[0].x,
+          y: baseLine[1].y - baseLine[0].y,
+        });
+        let axisState = {
+          axes: [
+            {
+              id: 0,
+              parent: null,
+              anchor: { x: baseLine[0].x, y: baseLine[0].y },
+              tip: { x: baseLine[1].x, y: baseLine[1].y },
+              dir: rootAxisDir,
+            },
+          ],
+          segmentAxis: [0],
+        };
+        const initialPointRule = ["seed", "seed"];
+        const initialPointAxis = [0, 0];
+        const initialNodes = buildNodeGraph(baseLine, initialPointRule, initialPointAxis, []);
+        steps.push(attachFormTriangles({
           points: baseLine,
           pointPolarity: [-1, 1],
+          pointAxis: initialPointAxis,
+          pointRule: initialPointRule,
           segmentOrient: [1],
           segmentPolarity: [1],
           segmentActive: [true],
+          segmentGroup: [0],
+          segmentAxis: axisState.segmentAxis,
           construction: { bases: [], links: [], inserted: [] },
           prevPoints: null,
           meta: {
             type: "initial",
             center: null,
             targets: [],
+            axisLinks: [],
             polarity: { pos: [{ ...baseLine[1] }], neg: [{ ...baseLine[0] }], posLinks: [] },
+            graph: { nodes: initialNodes, axes: snapshotAxes(axisState.axes) },
           },
-        });
+        }));
 
-        for (let i = 1; i <= params.steps; i += 1) {
-          const prev = steps[i - 1];
-          const isExpansion = i % 2 === 1;
-          const next = isExpansion
-            ? expandPolyline(
-                prev.points,
-                prev.segmentActive,
-                prev.segmentOrient,
-                prev.segmentPolarity,
-                prev.pointPolarity,
-                params,
-                i,
-                prev.meta.polarity
-              )
-            : contractPolyline(
-                prev.points,
-                prev.segmentActive,
-                prev.segmentOrient,
-                prev.segmentPolarity,
-                prev.pointPolarity,
-                params,
-                i,
-                prev.meta.targets,
-                prev.meta.center,
-                prev.meta.polarity
-              );
-          steps.push({
-            points: next.points,
-            pointPolarity: next.pointPolarity,
-            segmentOrient: next.segmentOrient,
-            segmentPolarity: next.segmentPolarity,
-            segmentActive: next.segmentActive,
-            construction: next.construction,
-            prevPoints: prev.points,
-            meta: next.meta,
-          });
+        let stepIndex = 1;
+        const stageSequence = [
+          { stage: params.contractionStage, useEdgeMode: true },
+        ];
+        if (params.enableExpansionStage) {
+          stageSequence.push({ stage: params.expansionStage, useEdgeMode: false });
+        }
+
+        for (const stageItem of stageSequence) {
+          let stageStepCount = 0;
+          if (!stageItem.useEdgeMode && steps.length > 0) {
+            const last = steps[steps.length - 1];
+            steps[steps.length - 1] = {
+              ...last,
+              // Stage handoff: allow expansion stage to continue from final stage-1 geometry.
+              segmentActive: new Array(Math.max(0, last.points.length - 1)).fill(true),
+              // Reset group labels so stage 2 starts from all edges uniformly.
+              segmentGroup: new Array(Math.max(0, last.points.length - 1)).fill(0),
+            };
+          }
+          while (stepIndex <= maxAutoSteps && stageStepCount < maxStageSteps) {
+            const prev = steps[steps.length - 1];
+            const axisStateBeforeExpansion = axisState;
+            const expansionParams = {
+              position: stageItem.stage.position,
+              intensity: stageItem.stage.intensity,
+              angle: stageItem.stage.angle,
+              contractionPosition: stageItem.stage.contractionPosition,
+              contractionIntensity: stageItem.stage.contractionIntensity,
+              minEdgeLength: stageItem.stage.minEdgeLength,
+              developEdge2: stageItem.useEdgeMode && stageItem.stage.mode === "edge2",
+              developEdge4: stageItem.useEdgeMode && stageItem.stage.mode === "edge4",
+              stopNegNeg: params.stopNegNeg,
+              jitter: params.jitter,
+              jitterAmount: params.jitterAmount,
+            };
+            const expansion = expandPolyline(
+              prev.points,
+              prev.segmentActive,
+              prev.segmentGroup,
+              prev.segmentOrient,
+              prev.segmentPolarity,
+              prev.pointPolarity,
+              prev.pointAxis,
+              prev.pointRule,
+              expansionParams,
+              stepIndex,
+              prev.meta.polarity,
+              axisState
+            );
+            axisState = expansion.axisState;
+            steps.push(attachFormTriangles({
+              points: expansion.points,
+              pointPolarity: expansion.pointPolarity,
+              pointAxis: expansion.pointAxis,
+              pointRule: expansion.pointRule,
+              segmentOrient: expansion.segmentOrient,
+              segmentPolarity: expansion.segmentPolarity,
+              segmentActive: expansion.segmentActive,
+              segmentGroup: expansion.segmentGroup,
+              segmentAxis: expansion.segmentAxis,
+              construction: expansion.construction,
+              prevPoints: prev.points,
+              meta: expansion.meta,
+            }));
+            stageStepCount += 1;
+            const expansionCount = expansion.meta?.expansionPoints?.length ?? 0;
+            if (expansionCount === 0) {
+              // Stage 1 must terminate on contraction; drop the terminal empty expansion step.
+              if (stageItem.useEdgeMode) {
+                steps.pop();
+                axisState = axisStateBeforeExpansion;
+                stageStepCount -= 1;
+              } else {
+                // Stage 2 must end on expansion. Replace empty expansion with forced all-edge expansion.
+                steps.pop();
+                axisState = axisStateBeforeExpansion;
+                stageStepCount -= 1;
+                const forcedExpansion = expandPolyline(
+                  prev.points,
+                  new Array(Math.max(0, prev.points.length - 1)).fill(true),
+                  new Array(Math.max(0, prev.points.length - 1)).fill(0),
+                  prev.segmentOrient,
+                  prev.segmentPolarity,
+                  prev.pointPolarity,
+                  prev.pointAxis,
+                  prev.pointRule,
+                  {
+                    ...expansionParams,
+                    minEdgeLength: -1,
+                    developEdge2: false,
+                    developEdge4: false,
+                  },
+                  stepIndex,
+                  prev.meta.polarity,
+                  axisState
+                );
+                axisState = forcedExpansion.axisState;
+                steps.push(attachFormTriangles({
+                  points: forcedExpansion.points,
+                  pointPolarity: forcedExpansion.pointPolarity,
+                  pointAxis: forcedExpansion.pointAxis,
+                  pointRule: forcedExpansion.pointRule,
+                  segmentOrient: forcedExpansion.segmentOrient,
+                  segmentPolarity: forcedExpansion.segmentPolarity,
+                  segmentActive: forcedExpansion.segmentActive,
+                  segmentGroup: forcedExpansion.segmentGroup,
+                  segmentAxis: forcedExpansion.segmentAxis,
+                  construction: forcedExpansion.construction,
+                  prevPoints: prev.points,
+                  meta: forcedExpansion.meta,
+                }));
+                stageStepCount += 1;
+              }
+              break;
+            }
+
+            stepIndex += 1;
+            if (stepIndex > maxAutoSteps || stageStepCount >= maxStageSteps) {
+              // Stage 1 must terminate on contraction across all development modes.
+              if (stageItem.useEdgeMode) {
+                steps.pop();
+                axisState = axisStateBeforeExpansion;
+                stageStepCount -= 1;
+              }
+              break;
+            }
+            const prevAfterExpansion = steps[steps.length - 1];
+            const contractionParams = {
+              position: stageItem.stage.position,
+              intensity: stageItem.stage.intensity,
+              angle: stageItem.stage.angle,
+              contractionPosition: stageItem.stage.contractionPosition,
+              contractionIntensity: stageItem.stage.contractionIntensity,
+              minEdgeLength: stageItem.stage.minEdgeLength,
+              stopNegNeg: params.stopNegNeg,
+              jitter: false,
+              jitterAmount: 0,
+            };
+            const contraction = contractPolyline(
+              prevAfterExpansion.points,
+              prevAfterExpansion.segmentActive,
+              prevAfterExpansion.segmentGroup,
+              prevAfterExpansion.segmentOrient,
+              prevAfterExpansion.segmentPolarity,
+              prevAfterExpansion.pointPolarity,
+              prevAfterExpansion.pointAxis,
+              prevAfterExpansion.pointRule,
+              contractionParams,
+              stepIndex,
+              prevAfterExpansion.meta.targets,
+              prevAfterExpansion.meta.center,
+              prevAfterExpansion.meta.polarity,
+              axisState
+            );
+            axisState = contraction.axisState;
+            steps.push(attachFormTriangles({
+              points: contraction.points,
+              pointPolarity: contraction.pointPolarity,
+              pointAxis: contraction.pointAxis,
+              pointRule: contraction.pointRule,
+              segmentOrient: contraction.segmentOrient,
+              segmentPolarity: contraction.segmentPolarity,
+              segmentActive: contraction.segmentActive,
+              segmentGroup: contraction.segmentGroup,
+              segmentAxis: contraction.segmentAxis,
+              construction: contraction.construction,
+              prevPoints: prevAfterExpansion.points,
+              meta: contraction.meta,
+            }));
+            stageStepCount += 1;
+
+            stepIndex += 1;
+            if (stepIndex > maxAutoSteps || stageStepCount >= maxStageSteps) {
+              if (!stageItem.useEdgeMode) {
+                // Stage 2 must end on expansion even when the limit is reached after contraction.
+                const prevFinal = steps[steps.length - 1];
+                const finalExpansion = expandPolyline(
+                  prevFinal.points,
+                  new Array(Math.max(0, prevFinal.points.length - 1)).fill(true),
+                  new Array(Math.max(0, prevFinal.points.length - 1)).fill(0),
+                  prevFinal.segmentOrient,
+                  prevFinal.segmentPolarity,
+                  prevFinal.pointPolarity,
+                  prevFinal.pointAxis,
+                  prevFinal.pointRule,
+                  {
+                    ...expansionParams,
+                    minEdgeLength: -1,
+                    developEdge2: false,
+                    developEdge4: false,
+                  },
+                  stepIndex,
+                  prevFinal.meta.polarity,
+                  axisState
+                );
+                axisState = finalExpansion.axisState;
+                steps.push(attachFormTriangles({
+                  points: finalExpansion.points,
+                  pointPolarity: finalExpansion.pointPolarity,
+                  pointAxis: finalExpansion.pointAxis,
+                  pointRule: finalExpansion.pointRule,
+                  segmentOrient: finalExpansion.segmentOrient,
+                  segmentPolarity: finalExpansion.segmentPolarity,
+                  segmentActive: finalExpansion.segmentActive,
+                  segmentGroup: finalExpansion.segmentGroup,
+                  segmentAxis: finalExpansion.segmentAxis,
+                  construction: finalExpansion.construction,
+                  prevPoints: prevFinal.points,
+                  meta: finalExpansion.meta,
+                }));
+                stageStepCount += 1;
+              }
+              break;
+            }
+          }
+          if (stepIndex > maxAutoSteps) break;
         }
 
         return steps;
@@ -367,26 +881,37 @@
       function expandPolyline(
         points,
         segmentActive,
+        segmentGroup,
         segmentOrient,
         segmentPolarity,
         pointPolarity,
+        pointAxis,
+        pointRule,
         params,
         stepIndex,
-        prevPolarity
+        prevPolarity,
+        axisState
       ) {
         if (!points || points.length < 2) {
           return {
             points: points ? points.slice() : [],
             pointPolarity: pointPolarity ? pointPolarity.slice() : [],
+            pointAxis: pointAxis ? pointAxis.slice() : [],
+            pointRule: pointRule ? pointRule.slice() : [],
             segmentOrient: segmentOrient ? segmentOrient.slice() : [],
             segmentPolarity: segmentPolarity ? segmentPolarity.slice() : [],
             segmentActive: segmentActive ? segmentActive.slice() : [],
+            segmentGroup: segmentGroup ? segmentGroup.slice() : [],
+            segmentAxis: axisState?.segmentAxis ? axisState.segmentAxis.slice() : [],
             construction: { bases: [], links: [], inserted: [] },
+            axisState: axisState || { axes: [], segmentAxis: [] },
             meta: {
               type: "expansion",
               center: { x: 0, y: 0 },
               expansionPoints: [],
               targets: [],
+              axisLinks: [],
+              graph: { nodes: [], axes: snapshotAxes(axisState?.axes || []) },
               polarity: {
                 pos: prevPolarity?.pos ? prevPolarity.pos.slice() : [],
                 neg: prevPolarity?.neg ? prevPolarity.neg.slice() : [],
@@ -402,10 +927,24 @@
           pointPolarity && pointPolarity.length === points.length
             ? pointPolarity
             : new Array(points.length).fill(0);
+        const pointAxisIn =
+          pointAxis && pointAxis.length === points.length
+            ? pointAxis
+            : new Array(points.length).fill(null);
+        const pointRuleIn =
+          pointRule && pointRule.length === points.length
+            ? pointRule
+            : new Array(points.length).fill("carry");
         const activeIn =
           segmentActive && segmentActive.length === points.length - 1
             ? segmentActive
             : new Array(points.length - 1).fill(true);
+        const groupIn =
+          segmentGroup && segmentGroup.length === points.length - 1
+            ? segmentGroup
+            : new Array(points.length - 1).fill(0);
+        const hasGroupedInput = groupIn.some((g) => g !== 0);
+        const edge2FirstCycle = params.developEdge2 && !params.developEdge4 && stepIndex === 3;
         const orientIn =
           segmentOrient && segmentOrient.length === points.length - 1
             ? segmentOrient
@@ -414,10 +953,21 @@
           segmentPolarity && segmentPolarity.length === points.length - 1
             ? segmentPolarity
             : new Array(points.length - 1).fill(1);
+        const segmentAxisIn =
+          axisState && axisState.segmentAxis && axisState.segmentAxis.length === points.length - 1
+            ? axisState.segmentAxis
+            : new Array(points.length - 1).fill(0);
+        const axesIn = axisState && axisState.axes ? axisState.axes : [];
+        const axes = axesIn.slice();
+        let parentAxis = axes[0];
         const newPolarity = [polIn[0] ?? 0];
+        const newPointAxis = [pointAxisIn[0] ?? null];
+        const newPointRule = [pointRuleIn[0] ?? "carry"];
         const newSegmentOrient = [];
         const newSegmentPolarity = [];
         const newSegmentActive = [];
+        const newSegmentGroup = [];
+        const newSegmentAxis = [];
         const tBase = clamp(params.position, 0, 1);
         const intensity = clamp(params.intensity, 0, 1);
         const angleBase = (params.angle * Math.PI) / 180;
@@ -425,37 +975,104 @@
         const construction = { bases: [], links: [], inserted: [] };
         const expansionPoints = [];
         const targets = [];
+        const expansionTriangles = [];
         const expansionLinks = [];
+        const axisLinks = [];
+        const insertedMeta = [];
 
         for (let i = 0; i < points.length - 1; i += 1) {
           const p0 = points[i];
           const p1 = points[i + 1];
           const pol0 = polIn[i] ?? 0;
           const pol1 = polIn[i + 1] ?? 0;
-          const isActive = activeIn[i] ?? true;
           const orient = segmentOrientation(pol0, pol1, orientIn[i] ?? 1);
           const side = sideIn[i] ?? 1;
+          let parentAxisId = null;
+          const isNegNeg = pol0 < 0 && pol1 < 0;
+          if (isNegNeg) {
+            if (pointAxisIn[i] != null) {
+              parentAxisId = pointAxisIn[i];
+            } else if (pointAxisIn[i + 1] != null) {
+              parentAxisId = pointAxisIn[i + 1];
+            }
+          }
+          const leftRule = pointRuleIn[i];
+          const rightRule = pointRuleIn[i + 1];
+          if (leftRule === "E" && rightRule !== "E") {
+            parentAxisId = pointAxisIn[i];
+          } else if (rightRule === "E" && leftRule !== "E") {
+            parentAxisId = pointAxisIn[i + 1];
+          } else if (leftRule === "E" && rightRule === "E") {
+            parentAxisId = pointAxisIn[i] ?? pointAxisIn[i + 1];
+          }
+          if (parentAxisId == null) {
+            if ((pol0 ?? 0) > 0 && pointAxisIn[i] != null) {
+              parentAxisId = pointAxisIn[i];
+            } else if ((pol1 ?? 0) > 0 && pointAxisIn[i + 1] != null) {
+              parentAxisId = pointAxisIn[i + 1];
+            } else {
+              parentAxisId = segmentAxisIn[i] ?? 0;
+            }
+          }
+          parentAxis = axes[parentAxisId] || axes[0];
           const dx = p1.x - p0.x;
           const dy = p1.y - p0.y;
           const len = Math.hypot(dx, dy);
+          const groupId = groupIn[i] ?? 0;
+          const limitGroups = params.developEdge2 || params.developEdge4;
+          let allowGroup2 = params.developEdge2;
+          let allowGroup4 = params.developEdge4;
+          const groupAllowed =
+            !limitGroups ||
+            !hasGroupedInput ||
+            (allowGroup2 && groupId === 2) ||
+            (allowGroup4 && groupId === 4);
+          let edge2AdjacencyAllowed = true;
+          if (edge2FirstCycle && groupId === 2) {
+            const prevSegIsNegNeg = i > 0 && polIn[i - 1] < 0 && polIn[i] < 0;
+            const nextSegIsNegNeg =
+              i + 2 < polIn.length && polIn[i + 1] < 0 && polIn[i + 2] < 0;
+            edge2AdjacencyAllowed = prevSegIsNegNeg || nextSegIsNegNeg;
+          }
+          const minEdgeLength = Math.max(0, params.minEdgeLength ?? 0);
+          const lengthActive = len > minEdgeLength;
+          const isActive = (activeIn[i] ?? true) && groupAllowed && edge2AdjacencyAllowed && lengthActive;
           const stopEdge = params.stopNegNeg && pol0 < 0 && pol1 < 0;
 
           if (len < 1e-9) {
             newPoints.push({ x: p0.x, y: p0.y });
             newPoints.push({ x: p1.x, y: p1.y });
             newPolarity.push(pol0, pol1);
+            newPointAxis.push(pointAxisIn[i] ?? parentAxisId, pointAxisIn[i + 1] ?? parentAxisId);
+            newPointRule.push(pointRuleIn[i] ?? "carry", pointRuleIn[i + 1] ?? "carry");
             newSegmentOrient.push(orient, orient);
             newSegmentPolarity.push(side, side);
             newSegmentActive.push(false, false);
+            newSegmentGroup.push(groupId, groupId);
+            newSegmentAxis.push(parentAxisId, parentAxisId);
+            targets.push(null, null);
             continue;
           }
 
           if (!isActive || stopEdge) {
+            if (stopEdge) {
+              const leftIsC = pointRuleIn[i] === "C";
+              const rightIsC = pointRuleIn[i + 1] === "C";
+              if (leftIsC && pointAxisIn[i] != null) {
+                parentAxisId = pointAxisIn[i];
+              } else if (rightIsC && pointAxisIn[i + 1] != null) {
+                parentAxisId = pointAxisIn[i + 1];
+              }
+            }
             newPoints.push(p1);
             newPolarity.push(pol1);
+            newPointAxis.push(pointAxisIn[i + 1] ?? parentAxisId);
+            newPointRule.push(pointRuleIn[i + 1] ?? "carry");
             newSegmentOrient.push(orient);
             newSegmentPolarity.push(side);
             newSegmentActive.push(false);
+            newSegmentGroup.push(groupId);
+            newSegmentAxis.push(parentAxisId);
             targets.push(null);
             continue;
           }
@@ -474,7 +1091,7 @@
             magnitude *= 1 + j3 * jitterAmount;
           }
 
-          const base = { x: p0.x + dx * t, y: p0.y + dy * t };
+          const baseEdge = { x: p0.x + dx * t, y: p0.y + dy * t };
           const dirRaw = { x: dx / len, y: dy / len };
           let outward = { x: dirRaw.y, y: -dirRaw.x };
           if (side < 0) {
@@ -485,26 +1102,61 @@
             perp = { x: -perp.x, y: -perp.y };
           }
 
+          const baseAxis = projectPointToAxis(baseEdge, parentAxis);
           const pNew = {
-            x: base.x + perp.x * magnitude,
-            y: base.y + perp.y * magnitude,
+            x: baseAxis.x + perp.x * magnitude,
+            y: baseAxis.y + perp.y * magnitude,
           };
+          const axisAnchor = { x: baseAxis.x, y: baseAxis.y };
+          const axisDir = normalizeVec(
+            { x: pNew.x - axisAnchor.x, y: pNew.y - axisAnchor.y },
+            parentAxis?.dir || { x: 0, y: 1 }
+          );
+          const axisId = axes.length;
+          axes.push({
+            id: axisId,
+            parent: parentAxis ? parentAxis.id : null,
+            anchor: { x: axisAnchor.x, y: axisAnchor.y },
+            tip: { x: pNew.x, y: pNew.y },
+            dir: axisDir,
+          });
+          axisLinks.push({ a: axisAnchor, b: pNew });
 
-          construction.bases.push(base);
-          construction.links.push({ a: base, b: pNew });
+          construction.bases.push(baseAxis);
+          construction.links.push({ a: baseAxis, b: pNew });
           construction.inserted.push(pNew);
           expansionPoints.push(pNew);
-          expansionLinks.push({ a: base, b: pNew });
-          targets.push(base, base);
+          expansionLinks.push({ a: baseAxis, b: pNew });
+          targets.push(baseAxis, baseAxis);
+          expansionTriangles.push(
+            { a: baseAxis, b: p0, c: pNew },
+            { a: baseAxis, b: pNew, c: p1 }
+          );
 
           newPoints.push(pNew);
           newPoints.push(p1);
+          const newPointIndex = newPoints.length - 2;
+          insertedMeta[newPointIndex] = {
+            rule: "E",
+            axisId,
+            parentAxisId: parentAxis ? parentAxis.id : null,
+            base: { x: baseAxis.x, y: baseAxis.y },
+            edgeBase: { x: baseEdge.x, y: baseEdge.y },
+            edge: { a: i, b: i + 1 },
+          };
           newPolarity.push(1, pol1);
+          newPointAxis.push(axisId);
+          newPointRule.push("E");
           const orientA = segmentOrientation(pol0, 1, orient);
           const orientB = segmentOrientation(1, pol1, orient);
           newSegmentOrient.push(orientA, orientB);
           newSegmentPolarity.push(side, side);
           newSegmentActive.push(true, true);
+          // Expansion stage always creates a binary local split for the next contraction stage.
+          newSegmentGroup.push(0, 1);
+          newSegmentAxis.push(axisId, axisId);
+          newPointAxis.push(pointAxisIn[i + 1] ?? parentAxisId);
+          newPointRule.push(pointRuleIn[i + 1] ?? "carry");
         }
 
         const basePoints = construction.bases;
@@ -523,15 +1175,26 @@
         return {
           points: newPoints,
           pointPolarity: newPolarity,
+          pointAxis: newPointAxis,
+          pointRule: newPointRule,
           segmentOrient: newSegmentOrient,
           segmentPolarity: newSegmentPolarity,
           segmentActive: newSegmentActive,
+          segmentGroup: newSegmentGroup,
+          segmentAxis: newSegmentAxis,
           construction,
+          axisState: { axes, segmentAxis: newSegmentAxis },
           meta: {
             type: "expansion",
             center,
             expansionPoints,
             targets,
+            expansionTriangles,
+            axisLinks,
+            graph: {
+              nodes: buildNodeGraph(newPoints, newPointRule, newPointAxis, insertedMeta),
+              axes: snapshotAxes(axes),
+            },
             polarity: {
               pos: (prevPolarity?.pos ? prevPolarity.pos.slice() : []).concat(expansionPoints),
               neg: prevPolarity?.neg ? prevPolarity.neg.slice() : [],
@@ -547,27 +1210,38 @@
       function contractPolyline(
         points,
         segmentActive,
+        segmentGroup,
         segmentOrient,
         segmentPolarity,
         pointPolarity,
+        pointAxis,
+        pointRule,
         params,
         stepIndex,
         targets,
         center,
-        prevPolarity
+        prevPolarity,
+        axisState
       ) {
         if (!points || points.length < 2) {
           return {
             points: points ? points.slice() : [],
             pointPolarity: pointPolarity ? pointPolarity.slice() : [],
+            pointAxis: pointAxis ? pointAxis.slice() : [],
+            pointRule: pointRule ? pointRule.slice() : [],
             segmentOrient: segmentOrient ? segmentOrient.slice() : [],
             segmentPolarity: segmentPolarity ? segmentPolarity.slice() : [],
             segmentActive: segmentActive ? segmentActive.slice() : [],
+            segmentGroup: segmentGroup ? segmentGroup.slice() : [],
+            segmentAxis: axisState?.segmentAxis ? axisState.segmentAxis.slice() : [],
             construction: { bases: [], links: [], inserted: [] },
+            axisState: axisState || { axes: [], segmentAxis: [] },
             meta: {
               type: "contraction",
               center: center || { x: 0, y: 0 },
               targets: [],
+              axisLinks: [],
+              graph: { nodes: [], axes: snapshotAxes(axisState?.axes || []) },
               polarity: {
                 pos: prevPolarity?.pos ? prevPolarity.pos.slice() : [],
                 neg: prevPolarity?.neg ? prevPolarity.neg.slice() : [],
@@ -584,10 +1258,22 @@
           pointPolarity && pointPolarity.length === points.length
             ? pointPolarity
             : new Array(points.length).fill(0);
+        const pointAxisIn =
+          pointAxis && pointAxis.length === points.length
+            ? pointAxis
+            : new Array(points.length).fill(null);
+        const pointRuleIn =
+          pointRule && pointRule.length === points.length
+            ? pointRule
+            : new Array(points.length).fill("carry");
         const activeIn =
           segmentActive && segmentActive.length === points.length - 1
             ? segmentActive
             : new Array(points.length - 1).fill(true);
+        const groupIn =
+          segmentGroup && segmentGroup.length === points.length - 1
+            ? segmentGroup
+            : new Array(points.length - 1).fill(0);
         const orientIn =
           segmentOrient && segmentOrient.length === points.length - 1
             ? segmentOrient
@@ -596,54 +1282,120 @@
           segmentPolarity && segmentPolarity.length === points.length - 1
             ? segmentPolarity
             : new Array(points.length - 1).fill(1);
+        const segmentAxisIn =
+          axisState && axisState.segmentAxis && axisState.segmentAxis.length === points.length - 1
+            ? axisState.segmentAxis
+            : new Array(points.length - 1).fill(0);
+        const axesIn = axisState && axisState.axes ? axisState.axes : [];
+        const axes = axesIn.slice();
         const newPolarity = [polIn[0] ?? 0];
+        const newPointAxis = [pointAxisIn[0] ?? null];
+        const newPointRule = [pointRuleIn[0] ?? "carry"];
         const newSegmentOrient = [];
         const newSegmentPolarity = [];
         const newSegmentActive = [];
+        let newSegmentGroup = [];
+        const newSegmentAxis = [];
         const tBase = clamp(params.contractionPosition, 0, 1);
         const intensity = clamp(params.contractionIntensity, 0, 1);
         const construction = { bases: [], links: [], inserted: [] };
         const contractionPoints = [];
         const contractionLinks = [];
+        const nextTargets = [];
+        const axisLinks = [];
+        const insertedMeta = [];
 
         for (let i = 0; i < points.length - 1; i += 1) {
           const p0 = points[i];
           const p1 = points[i + 1];
           const pol0 = polIn[i] ?? 0;
           const pol1 = polIn[i + 1] ?? 0;
-          const isActive = activeIn[i] ?? true;
           const orient = segmentOrientation(pol0, pol1, orientIn[i] ?? 1);
           const side = sideIn[i] ?? 1;
+          let parentAxisId = null;
+          const isNegNeg = pol0 < 0 && pol1 < 0;
+          if (isNegNeg) {
+            if (pointAxisIn[i] != null) {
+              parentAxisId = pointAxisIn[i];
+            } else if (pointAxisIn[i + 1] != null) {
+              parentAxisId = pointAxisIn[i + 1];
+            }
+          }
+          const leftRule = pointRuleIn[i];
+          const rightRule = pointRuleIn[i + 1];
+          if (leftRule === "E" && rightRule !== "E") {
+            parentAxisId = pointAxisIn[i];
+          } else if (rightRule === "E" && leftRule !== "E") {
+            parentAxisId = pointAxisIn[i + 1];
+          } else if (leftRule === "E" && rightRule === "E") {
+            parentAxisId = pointAxisIn[i] ?? pointAxisIn[i + 1];
+          }
+          if (parentAxisId == null) {
+            if ((pol0 ?? 0) > 0 && pointAxisIn[i] != null) {
+              parentAxisId = pointAxisIn[i];
+            } else if ((pol1 ?? 0) > 0 && pointAxisIn[i + 1] != null) {
+              parentAxisId = pointAxisIn[i + 1];
+            } else {
+              parentAxisId = segmentAxisIn[i] ?? 0;
+            }
+          }
+          const parentAxis = axes[parentAxisId] || axes[0];
           const dx = p1.x - p0.x;
           const dy = p1.y - p0.y;
           const len = Math.hypot(dx, dy);
+          const groupId = groupIn[i] ?? 0;
+          const isActive = activeIn[i] ?? true;
+          const rawTarget = targets && i < targets.length ? targets[i] : undefined;
+          const target = rawTarget === undefined ? fallback : rawTarget;
 
           if (len < 1e-9) {
             newPoints.push({ x: p0.x, y: p0.y });
             newPoints.push({ x: p1.x, y: p1.y });
             newPolarity.push(pol0, pol1);
+            newPointAxis.push(pointAxisIn[i] ?? parentAxisId, pointAxisIn[i + 1] ?? parentAxisId);
+            newPointRule.push(pointRuleIn[i] ?? "carry", pointRuleIn[i + 1] ?? "carry");
             newSegmentOrient.push(orient, orient);
             newSegmentPolarity.push(side, side);
             newSegmentActive.push(false, false);
+            newSegmentGroup.push(groupId, groupId);
+            newSegmentAxis.push(parentAxisId, parentAxisId);
+            nextTargets.push(target, target);
             continue;
           }
 
           if (!isActive) {
             newPoints.push(p1);
             newPolarity.push(pol1);
+            newPointAxis.push(pointAxisIn[i + 1] ?? parentAxisId);
+            newPointRule.push(pointRuleIn[i + 1] ?? "carry");
             newSegmentOrient.push(orient);
             newSegmentPolarity.push(side);
             newSegmentActive.push(false);
+            newSegmentGroup.push(groupId);
+            newSegmentAxis.push(parentAxisId);
+            nextTargets.push(target);
             continue;
           }
 
           const base = { x: p0.x + dx * tBase, y: p0.y + dy * tBase };
-          const target = targets && targets[i] ? targets[i] : fallback;
           const toCenter = { x: target.x - base.x, y: target.y - base.y };
           const pNew = {
             x: base.x + toCenter.x * intensity,
             y: base.y + toCenter.y * intensity,
           };
+          const axisAnchor = target;
+          const axisDir = normalizeVec(
+            { x: pNew.x - axisAnchor.x, y: pNew.y - axisAnchor.y },
+            parentAxis?.dir || { x: 0, y: 1 }
+          );
+          const axisId = axes.length;
+          axes.push({
+            id: axisId,
+            parent: parentAxis ? parentAxis.id : null,
+            anchor: { x: axisAnchor.x, y: axisAnchor.y },
+            tip: { x: pNew.x, y: pNew.y },
+            dir: axisDir,
+          });
 
           construction.bases.push(base);
           construction.links.push({ a: base, b: pNew });
@@ -652,25 +1404,69 @@
           contractionLinks.push({ a: pNew, b: target });
           newPoints.push(pNew);
           newPoints.push(p1);
+          const newPointIndex = newPoints.length - 2;
+          insertedMeta[newPointIndex] = {
+            rule: "C",
+            axisId,
+            parentAxisId,
+            base: { x: base.x, y: base.y },
+            edge: { a: i, b: i + 1 },
+          };
           newPolarity.push(-1, pol1);
+          newPointAxis.push(axisId);
+          newPointRule.push("C");
           const orientA = segmentOrientation(pol0, -1, orient);
           const orientB = segmentOrientation(-1, pol1, orient);
           newSegmentOrient.push(orientA, orientB);
           newSegmentPolarity.push(side, side);
           newSegmentActive.push(true, true);
+          let halfIndex = null;
+          if (leftRule === "E" && rightRule !== "E") {
+            halfIndex = 1;
+          } else if (rightRule === "E" && leftRule !== "E") {
+            halfIndex = 0;
+          }
+          let groupA = groupId;
+          let groupB = groupId;
+          if (groupId === 0) {
+            groupA = 1;
+            groupB = 2;
+          } else if (groupId === 1) {
+            groupA = 3;
+            groupB = 4;
+          } else if (halfIndex != null) {
+            const baseIndex = halfIndex === 0 ? 1 : 3;
+            groupA = baseIndex;
+            groupB = baseIndex + 1;
+          }
+          newSegmentGroup.push(groupA, groupB);
+          newSegmentAxis.push(axisId, axisId);
+          nextTargets.push(target, target);
+          newPointAxis.push(pointAxisIn[i + 1] ?? parentAxisId);
+          newPointRule.push(pointRuleIn[i + 1] ?? "carry");
         }
 
         return {
           points: newPoints,
           pointPolarity: newPolarity,
+          pointAxis: newPointAxis,
+          pointRule: newPointRule,
           segmentOrient: newSegmentOrient,
           segmentPolarity: newSegmentPolarity,
           segmentActive: newSegmentActive,
+          segmentGroup: newSegmentGroup,
+          segmentAxis: newSegmentAxis,
           construction,
+          axisState: { axes, segmentAxis: newSegmentAxis },
           meta: {
             type: "contraction",
             center: fallback,
-            targets: targets || [],
+            targets: nextTargets,
+            axisLinks,
+            graph: {
+              nodes: buildNodeGraph(newPoints, newPointRule, newPointAxis, insertedMeta),
+              axes: snapshotAxes(axes),
+            },
             polarity: {
               pos: prevPolarity?.pos ? prevPolarity.pos.slice() : [],
               neg: (prevPolarity?.neg ? prevPolarity.neg.slice() : []).concat(contractionPoints),
@@ -737,6 +1533,107 @@
         return { x, y };
       }
 
+      function drawBoundaryPath(ctx, points, transform, smoothing) {
+        if (!points || points.length < 2) return;
+        const t = clamp(smoothing ?? 0, 0, 1);
+        const cpts = points.map((p) => worldToCanvas(p, transform));
+        if (t <= 1e-6 || cpts.length < 3) {
+          ctx.beginPath();
+          ctx.moveTo(cpts[0].x, cpts[0].y);
+          for (let i = 1; i < cpts.length; i += 1) {
+            ctx.lineTo(cpts[i].x, cpts[i].y);
+          }
+          return;
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(cpts[0].x, cpts[0].y);
+        const m01 = {
+          x: (cpts[0].x + cpts[1].x) * 0.5,
+          y: (cpts[0].y + cpts[1].y) * 0.5,
+        };
+        const firstAnchor = {
+          x: cpts[0].x + (m01.x - cpts[0].x) * t,
+          y: cpts[0].y + (m01.y - cpts[0].y) * t,
+        };
+        ctx.lineTo(firstAnchor.x, firstAnchor.y);
+        for (let i = 1; i < cpts.length - 1; i += 1) {
+          const ctrl = cpts[i];
+          const mid = {
+            x: (cpts[i].x + cpts[i + 1].x) * 0.5,
+            y: (cpts[i].y + cpts[i + 1].y) * 0.5,
+          };
+          const end = {
+            x: cpts[i].x + (mid.x - cpts[i].x) * t,
+            y: cpts[i].y + (mid.y - cpts[i].y) * t,
+          };
+          ctx.quadraticCurveTo(ctrl.x, ctrl.y, end.x, end.y);
+        }
+        const last = cpts[cpts.length - 1];
+        ctx.lineTo(last.x, last.y);
+      }
+
+      function drawFormTriangles(ctx, triangles, transform, mirrorAll = false) {
+        if (!triangles || triangles.length === 0) return;
+        ctx.beginPath();
+        for (const tri of triangles) {
+          const a = mirrorAll ? mirrorPoint(tri.a) : tri.a;
+          const b = mirrorAll ? mirrorPoint(tri.b) : tri.b;
+          const c = mirrorAll ? mirrorPoint(tri.c) : tri.c;
+          const pa = worldToCanvas(a, transform);
+          const pb = worldToCanvas(b, transform);
+          const pc = worldToCanvas(c, transform);
+          ctx.moveTo(pa.x, pa.y);
+          ctx.lineTo(pb.x, pb.y);
+          ctx.lineTo(pc.x, pc.y);
+          ctx.closePath();
+        }
+      }
+
+      function fillFormTriangles(ctx, triangles, transform, mirrorAll = false) {
+        drawFormTriangles(ctx, triangles, transform, mirrorAll);
+        ctx.fill();
+      }
+
+      function strokeFormTriangles(ctx, triangles, transform, mirrorAll = false) {
+        drawFormTriangles(ctx, triangles, transform, mirrorAll);
+        ctx.stroke();
+      }
+
+      function drawFormLayer(ctx, step, points, transform, style, edgesOnly = false) {
+        const currentTriangles = buildFormTriangles(points, step?.meta?.targets);
+        const formTriangles = step?.meta?.formTriangles;
+        const fillTriangles = formTriangles && formTriangles.length ? formTriangles : currentTriangles;
+        const strokeTriangles = fillTriangles;
+        if (!fillTriangles || fillTriangles.length === 0) return;
+        const outlineStroke = "rgba(0, 0, 0, 0.5)";
+        const outlineWidth = 0.7;
+        if (!edgesOnly) {
+          ctx.fillStyle = style.formFill;
+        }
+        if (SYMMETRIC_DISPLAY) {
+          if (!edgesOnly) {
+            fillFormTriangles(ctx, fillTriangles, transform, false);
+            fillFormTriangles(ctx, fillTriangles, transform, true);
+          }
+          if (strokeTriangles && strokeTriangles.length > 0) {
+            ctx.strokeStyle = outlineStroke;
+            ctx.lineWidth = outlineWidth;
+            strokeFormTriangles(ctx, strokeTriangles, transform, false);
+            strokeFormTriangles(ctx, strokeTriangles, transform, true);
+          }
+        } else {
+          if (!edgesOnly) {
+            fillFormTriangles(ctx, fillTriangles, transform, false);
+          }
+          if (strokeTriangles && strokeTriangles.length > 0) {
+            ctx.strokeStyle = outlineStroke;
+            ctx.lineWidth = outlineWidth;
+            strokeFormTriangles(ctx, strokeTriangles, transform, false);
+          }
+        }
+      }
+
       function drawStepToContext(ctx, step, params, size, padding, isExport = false) {
         ctx.clearRect(0, 0, size, size);
         ctx.fillStyle = "#ffffff";
@@ -758,6 +1655,7 @@
               mainWidth: 2.2,
               prevWidth: 1.2,
               constructionWidth: 1.0,
+              formFill: "rgba(0, 0, 0, 0.35)",
               axisStroke: "rgba(0, 0, 0, 0.2)",
               axisWidth: 1.1,
               baseRadius: 3.2,
@@ -775,6 +1673,7 @@
               mainWidth: 1.2,
               prevWidth: 0.8,
               constructionWidth: 0.9,
+              formFill: "rgba(0, 0, 0, 0.35)",
               axisStroke: "rgba(0, 0, 0, 0.2)",
               axisWidth: 0.9,
               baseRadius: 2.4,
@@ -782,14 +1681,34 @@
               polarityRadius: 2.8,
             };
 
-        ctx.strokeStyle = style.axisStroke;
-        ctx.lineWidth = style.axisWidth;
-        ctx.beginPath();
-        const axisTop = worldToCanvas({ x: 0, y: 0.5 }, transform);
-        const axisBottom = worldToCanvas({ x: 0, y: -0.5 }, transform);
-        ctx.moveTo(axisTop.x, axisTop.y);
-        ctx.lineTo(axisBottom.x, axisBottom.y);
-        ctx.stroke();
+        if (params.showAxis) {
+          ctx.strokeStyle = style.axisStroke;
+          ctx.lineWidth = style.axisWidth;
+          ctx.beginPath();
+          const axisTop = worldToCanvas({ x: 0, y: 0.5 }, transform);
+          const axisBottom = worldToCanvas({ x: 0, y: -0.5 }, transform);
+          ctx.moveTo(axisTop.x, axisTop.y);
+          ctx.lineTo(axisBottom.x, axisBottom.y);
+          ctx.stroke();
+
+          if (step.meta && step.meta.axisLinks?.length) {
+            ctx.strokeStyle = style.axisStroke;
+            ctx.lineWidth = style.axisWidth;
+            const linkSets = SYMMETRIC_DISPLAY
+              ? [step.meta.axisLinks, mirrorSegments(step.meta.axisLinks)]
+              : [step.meta.axisLinks];
+            linkSets.forEach((segments) => {
+              ctx.beginPath();
+              for (const seg of segments) {
+                const a = worldToCanvas(seg.a, transform);
+                const b = worldToCanvas(seg.b, transform);
+                ctx.moveTo(a.x, a.y);
+                ctx.lineTo(b.x, b.y);
+              }
+              ctx.stroke();
+            });
+          }
+        }
 
         if (step.prevPoints && step.prevPoints.length >= 2) {
           ctx.strokeStyle = style.prevStroke;
@@ -798,15 +1717,14 @@
             ? [step.prevPoints, mirrorPoints(step.prevPoints)]
             : [step.prevPoints];
           prevSets.forEach((pts) => {
-            ctx.beginPath();
-            const prevFirst = worldToCanvas(pts[0], transform);
-            ctx.moveTo(prevFirst.x, prevFirst.y);
-            for (let i = 1; i < pts.length; i += 1) {
-              const pt = worldToCanvas(pts[i], transform);
-              ctx.lineTo(pt.x, pt.y);
-            }
+            drawBoundaryPath(ctx, pts, transform, params.smoothing);
             ctx.stroke();
           });
+        }
+
+        if (params.showForm && step.meta) {
+          drawFormLayer(ctx, step, points, transform, style, false);
+          return;
         }
 
         if (params.showConstructionPoints && step.meta) {
@@ -832,13 +1750,7 @@
         ctx.lineWidth = style.mainWidth;
         const pointSets = SYMMETRIC_DISPLAY ? [points, mirrorPoints(points)] : [points];
         pointSets.forEach((pts) => {
-          ctx.beginPath();
-          const first = worldToCanvas(pts[0], transform);
-          ctx.moveTo(first.x, first.y);
-          for (let i = 1; i < pts.length; i += 1) {
-            const pt = worldToCanvas(pts[i], transform);
-            ctx.lineTo(pt.x, pt.y);
-          }
+          drawBoundaryPath(ctx, pts, transform, params.smoothing);
           ctx.stroke();
         });
 
@@ -938,6 +1850,24 @@
             ctx.setLineDash([]);
           }
         }
+
+        if (params.showEdgeIds && step.segmentGroup && step.segmentGroup.length === points.length - 1) {
+          const groupSets = SYMMETRIC_DISPLAY ? [points, mirrorPoints(points)] : [points];
+          ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+          ctx.font = "11px Trebuchet MS, Segoe UI, Tahoma, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          groupSets.forEach((pts) => {
+            for (let i = 0; i < pts.length - 1; i += 1) {
+              const a = worldToCanvas(pts[i], transform);
+              const b = worldToCanvas(pts[i + 1], transform);
+              const mx = (a.x + b.x) * 0.5;
+              const my = (a.y + b.y) * 0.5;
+              const g = step.segmentGroup[i] ?? 0;
+              ctx.fillText(String(g), mx, my);
+            }
+          });
+        }
       }
 
       function drawStep(canvas, step, params) {
@@ -973,11 +1903,38 @@
         });
       }
 
+      function renderFinalStep(stepPolylines, params) {
+        if (!ui.finalCanvas) return;
+        const finalStep = stepPolylines.length > 0 ? stepPolylines[stepPolylines.length - 1] : null;
+        if (!finalStep) {
+          const dpr = window.devicePixelRatio || 1;
+          ui.finalCanvas.width = Math.round(TILE_SIZE * dpr);
+          ui.finalCanvas.height = Math.round(TILE_SIZE * dpr);
+          ui.finalCanvas.style.width = `${TILE_SIZE}px`;
+          ui.finalCanvas.style.height = `${TILE_SIZE}px`;
+          const ctx = ui.finalCanvas.getContext("2d");
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          ctx.clearRect(0, 0, TILE_SIZE, TILE_SIZE);
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
+          return;
+        }
+        drawStep(ui.finalCanvas, finalStep, params);
+      }
+
       function update() {
         const params = readParams();
         updateReadouts(params);
-        const steps = generateSteps(params);
+        let estimate = lastStepCount || 20;
+        let steps = [];
+        for (let i = 0; i < 3; i += 1) {
+          steps = generateSteps(params, estimate);
+          if (steps.length === estimate) break;
+          estimate = steps.length;
+        }
+        lastStepCount = steps.length;
         renderSteps(steps, params);
+        renderFinalStep(steps, params);
       }
 
       const inputs = document.querySelectorAll("input, select");
