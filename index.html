@@ -122,6 +122,14 @@
         </label>
 
         <label class="control">
+          <span>Smoothing</span>
+          <div class="control-row">
+            <input id="smoothing" type="range" min="0" max="1" step="0.01" value="0" />
+            <span class="value" id="smoothingVal"></span>
+          </div>
+        </label>
+
+        <label class="control">
           <span>Contraction Position tc</span>
           <div class="control-row">
             <input id="contractionPosition" type="range" min="0" max="1" step="0.01" value="0.5" />
@@ -204,6 +212,7 @@
         position: document.getElementById("position"),
         intensity: document.getElementById("intensity"),
         angle: document.getElementById("angle"),
+        smoothing: document.getElementById("smoothing"),
         contractionPosition: document.getElementById("contractionPosition"),
         contractionIntensity: document.getElementById("contractionIntensity"),
         showConstructionPoints: document.getElementById("showConstructionPoints"),
@@ -216,6 +225,7 @@
         positionVal: document.getElementById("positionVal"),
         intensityVal: document.getElementById("intensityVal"),
         angleVal: document.getElementById("angleVal"),
+        smoothingVal: document.getElementById("smoothingVal"),
         contractionPositionVal: document.getElementById("contractionPositionVal"),
         contractionIntensityVal: document.getElementById("contractionIntensityVal"),
         jitterVal: document.getElementById("jitterVal"),
@@ -278,6 +288,7 @@
           position: parseFloat(ui.position.value),
           intensity: parseFloat(ui.intensity.value),
           angle: parseFloat(ui.angle.value),
+          smoothing: parseFloat(ui.smoothing.value),
           contractionPosition: parseFloat(ui.contractionPosition.value),
           contractionIntensity: parseFloat(ui.contractionIntensity.value),
           showConstructionPoints: ui.showConstructionPoints.checked,
@@ -295,6 +306,7 @@
         ui.positionVal.textContent = params.position.toFixed(2);
         ui.intensityVal.textContent = params.intensity.toFixed(2);
         ui.angleVal.textContent = params.angle.toFixed(0);
+        ui.smoothingVal.textContent = params.smoothing.toFixed(2);
         ui.contractionPositionVal.textContent = params.contractionPosition.toFixed(2);
         ui.contractionIntensityVal.textContent = params.contractionIntensity.toFixed(2);
         ui.jitterVal.textContent = params.jitterAmount.toFixed(2);
@@ -737,6 +749,44 @@
         return { x, y };
       }
 
+      function drawSmoothedPath(ctx, points, polarity, transform, smoothing) {
+        if (!points || points.length < 2) return;
+        const hasPolarity = polarity && polarity.length === points.length;
+        const amount = clamp(smoothing, 0, 1);
+
+        const first = worldToCanvas(points[0], transform);
+        ctx.moveTo(first.x, first.y);
+
+        for (let i = 1; i < points.length; i += 1) {
+          const isExpansion = hasPolarity && polarity[i] === 1 && i < points.length - 1;
+          const isContraction = hasPolarity && polarity[i] === -1 && i < points.length - 1;
+          const shouldSmooth = (isExpansion || isContraction) && amount > 0;
+          if (!shouldSmooth) {
+            const pt = worldToCanvas(points[i], transform);
+            ctx.lineTo(pt.x, pt.y);
+            continue;
+          }
+
+          const prev = points[i - 1];
+          const curr = points[i];
+          const next = points[i + 1];
+          const a = { x: (prev.x + curr.x) * 0.5, y: (prev.y + curr.y) * 0.5 };
+          const c = { x: (curr.x + next.x) * 0.5, y: (curr.y + next.y) * 0.5 };
+          const acMid = { x: (a.x + c.x) * 0.5, y: (a.y + c.y) * 0.5 };
+          const control = {
+            x: acMid.x + (curr.x - acMid.x) * amount,
+            y: acMid.y + (curr.y - acMid.y) * amount,
+          };
+
+          const ap = worldToCanvas(a, transform);
+          ctx.lineTo(ap.x, ap.y);
+
+          const cp = worldToCanvas(control, transform);
+          const cpt = worldToCanvas(c, transform);
+          ctx.quadraticCurveTo(cp.x, cp.y, cpt.x, cpt.y);
+        }
+      }
+
       function drawStepToContext(ctx, step, params, size, padding, isExport = false) {
         ctx.clearRect(0, 0, size, size);
         ctx.fillStyle = "#ffffff";
@@ -830,17 +880,38 @@
 
         ctx.strokeStyle = style.mainStroke;
         ctx.lineWidth = style.mainWidth;
-        const pointSets = SYMMETRIC_DISPLAY ? [points, mirrorPoints(points)] : [points];
-        pointSets.forEach((pts) => {
+        if (params.smoothing > 0 && SYMMETRIC_DISPLAY) {
+          const right = points;
+          const left = mirrorPoints(points).slice().reverse();
+          const combined = right.concat(left.slice(1));
+          const pol = step.pointPolarity || null;
+          const leftPol = pol ? pol.slice().reverse() : null;
+          const combinedPol = pol && leftPol ? pol.concat(leftPol.slice(1)) : null;
           ctx.beginPath();
-          const first = worldToCanvas(pts[0], transform);
-          ctx.moveTo(first.x, first.y);
-          for (let i = 1; i < pts.length; i += 1) {
-            const pt = worldToCanvas(pts[i], transform);
-            ctx.lineTo(pt.x, pt.y);
-          }
+          drawSmoothedPath(ctx, combined, combinedPol, transform, params.smoothing);
           ctx.stroke();
-        });
+        } else {
+          const pointSets = SYMMETRIC_DISPLAY ? [points, mirrorPoints(points)] : [points];
+          const polaritySets =
+            SYMMETRIC_DISPLAY && step.pointPolarity
+              ? [step.pointPolarity, step.pointPolarity.slice()]
+              : [step.pointPolarity];
+          pointSets.forEach((pts, idx) => {
+            ctx.beginPath();
+            const pol = polaritySets[idx];
+            if (params.smoothing > 0) {
+              drawSmoothedPath(ctx, pts, pol, transform, params.smoothing);
+            } else {
+              const first = worldToCanvas(pts[0], transform);
+              ctx.moveTo(first.x, first.y);
+              for (let i = 1; i < pts.length; i += 1) {
+                const pt = worldToCanvas(pts[i], transform);
+                ctx.lineTo(pt.x, pt.y);
+              }
+            }
+            ctx.stroke();
+          });
+        }
 
         if (step.construction.links.length && params.showConstructionLines) {
           ctx.strokeStyle = style.constructionStroke;
