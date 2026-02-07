@@ -167,9 +167,30 @@
         </label>
 
         <label class="control">
+          <span>Develop Edge 2</span>
+          <div class="control-row">
+            <input id="developEdge2" type="checkbox" />
+          </div>
+        </label>
+
+        <label class="control">
+          <span>Develop Edge 4</span>
+          <div class="control-row">
+            <input id="developEdge4" type="checkbox" />
+          </div>
+        </label>
+
+        <label class="control">
           <span>Show Axis</span>
           <div class="control-row">
             <input id="showAxis" type="checkbox" />
+          </div>
+        </label>
+
+        <label class="control">
+          <span>Show Edge IDs</span>
+          <div class="control-row">
+            <input id="showEdgeIds" type="checkbox" />
           </div>
         </label>
 
@@ -235,7 +256,10 @@
         minEdgeLength: document.getElementById("minEdgeLength"),
         showConstructionPoints: document.getElementById("showConstructionPoints"),
         showConstructionLines: document.getElementById("showConstructionLines"),
+        developEdge2: document.getElementById("developEdge2"),
+        developEdge4: document.getElementById("developEdge4"),
         showAxis: document.getElementById("showAxis"),
+        showEdgeIds: document.getElementById("showEdgeIds"),
         showPolarityPoints: document.getElementById("showPolarityPoints"),
         stopNegNeg: document.getElementById("stopNegNeg"),
         jitter: document.getElementById("jitter"),
@@ -392,7 +416,10 @@
           minEdgeLength: parseFloat(ui.minEdgeLength.value),
           showConstructionPoints: ui.showConstructionPoints.checked,
           showConstructionLines: ui.showConstructionLines.checked,
+          developEdge2: ui.developEdge2.checked,
+          developEdge4: ui.developEdge4.checked,
           showAxis: ui.showAxis.checked,
+          showEdgeIds: ui.showEdgeIds.checked,
           showPolarityPoints: ui.showPolarityPoints.checked,
           stopNegNeg: ui.stopNegNeg.checked,
           jitter: ui.jitter.checked,
@@ -603,6 +630,7 @@
           segmentOrient: [1],
           segmentPolarity: [1],
           segmentActive: [true],
+          segmentGroup: [0],
           segmentAxis: axisState.segmentAxis,
           construction: { bases: [], links: [], inserted: [] },
           prevPoints: null,
@@ -632,6 +660,7 @@
           const expansion = expandPolyline(
             prev.points,
             prev.segmentActive,
+            prev.segmentGroup,
             prev.segmentOrient,
             prev.segmentPolarity,
             prev.pointPolarity,
@@ -651,6 +680,7 @@
             segmentOrient: expansion.segmentOrient,
             segmentPolarity: expansion.segmentPolarity,
             segmentActive: expansion.segmentActive,
+            segmentGroup: expansion.segmentGroup,
             segmentAxis: expansion.segmentAxis,
             construction: expansion.construction,
             prevPoints: prev.points,
@@ -675,6 +705,7 @@
           const contraction = contractPolyline(
             prevAfterExpansion.points,
             prevAfterExpansion.segmentActive,
+            prevAfterExpansion.segmentGroup,
             prevAfterExpansion.segmentOrient,
             prevAfterExpansion.segmentPolarity,
             prevAfterExpansion.pointPolarity,
@@ -696,6 +727,7 @@
             segmentOrient: contraction.segmentOrient,
             segmentPolarity: contraction.segmentPolarity,
             segmentActive: contraction.segmentActive,
+            segmentGroup: contraction.segmentGroup,
             segmentAxis: contraction.segmentAxis,
             construction: contraction.construction,
             prevPoints: prevAfterExpansion.points,
@@ -710,6 +742,7 @@
       function expandPolyline(
         points,
         segmentActive,
+        segmentGroup,
         segmentOrient,
         segmentPolarity,
         pointPolarity,
@@ -729,6 +762,7 @@
             segmentOrient: segmentOrient ? segmentOrient.slice() : [],
             segmentPolarity: segmentPolarity ? segmentPolarity.slice() : [],
             segmentActive: segmentActive ? segmentActive.slice() : [],
+            segmentGroup: segmentGroup ? segmentGroup.slice() : [],
             segmentAxis: axisState?.segmentAxis ? axisState.segmentAxis.slice() : [],
             construction: { bases: [], links: [], inserted: [] },
             axisState: axisState || { axes: [], segmentAxis: [] },
@@ -766,6 +800,12 @@
           segmentActive && segmentActive.length === points.length - 1
             ? segmentActive
             : new Array(points.length - 1).fill(true);
+        const groupIn =
+          segmentGroup && segmentGroup.length === points.length - 1
+            ? segmentGroup
+            : new Array(points.length - 1).fill(0);
+        const hasGroupedInput = groupIn.some((g) => g !== 0);
+        const edge2FirstCycle = params.developEdge2 && !params.developEdge4 && stepIndex === 3;
         const orientIn =
           segmentOrient && segmentOrient.length === points.length - 1
             ? segmentOrient
@@ -787,6 +827,7 @@
         const newSegmentOrient = [];
         const newSegmentPolarity = [];
         const newSegmentActive = [];
+        const newSegmentGroup = [];
         const newSegmentAxis = [];
         const tBase = clamp(params.position, 0, 1);
         const intensity = clamp(params.intensity, 0, 1);
@@ -837,7 +878,25 @@
           const dx = p1.x - p0.x;
           const dy = p1.y - p0.y;
           const len = Math.hypot(dx, dy);
-          const isActive = activeIn[i] ?? true;
+          const groupId = groupIn[i] ?? 0;
+          const limitGroups = params.developEdge2 || params.developEdge4;
+          let allowGroup2 = params.developEdge2;
+          let allowGroup4 = params.developEdge4;
+          const groupAllowed =
+            !limitGroups ||
+            !hasGroupedInput ||
+            (allowGroup2 && groupId === 2) ||
+            (allowGroup4 && groupId === 4);
+          let edge2AdjacencyAllowed = true;
+          if (edge2FirstCycle && groupId === 2) {
+            const prevSegIsNegNeg = i > 0 && polIn[i - 1] < 0 && polIn[i] < 0;
+            const nextSegIsNegNeg =
+              i + 2 < polIn.length && polIn[i + 1] < 0 && polIn[i + 2] < 0;
+            edge2AdjacencyAllowed = prevSegIsNegNeg || nextSegIsNegNeg;
+          }
+          const minEdgeLength = Math.max(0, params.minEdgeLength ?? 0);
+          const lengthActive = len > minEdgeLength;
+          const isActive = (activeIn[i] ?? true) && groupAllowed && edge2AdjacencyAllowed && lengthActive;
           const stopEdge = params.stopNegNeg && pol0 < 0 && pol1 < 0;
 
           if (len < 1e-9) {
@@ -849,6 +908,7 @@
             newSegmentOrient.push(orient, orient);
             newSegmentPolarity.push(side, side);
             newSegmentActive.push(false, false);
+            newSegmentGroup.push(groupId, groupId);
             newSegmentAxis.push(parentAxisId, parentAxisId);
             continue;
           }
@@ -870,6 +930,7 @@
             newSegmentOrient.push(orient);
             newSegmentPolarity.push(side);
             newSegmentActive.push(false);
+            newSegmentGroup.push(groupId);
             newSegmentAxis.push(parentAxisId);
             targets.push(null);
             continue;
@@ -946,6 +1007,8 @@
           newSegmentOrient.push(orientA, orientB);
           newSegmentPolarity.push(side, side);
           newSegmentActive.push(true, true);
+          // Expansion stage always creates a binary local split for the next contraction stage.
+          newSegmentGroup.push(0, 1);
           newSegmentAxis.push(axisId, axisId);
           newPointAxis.push(pointAxisIn[i + 1] ?? parentAxisId);
           newPointRule.push(pointRuleIn[i + 1] ?? "carry");
@@ -972,6 +1035,7 @@
           segmentOrient: newSegmentOrient,
           segmentPolarity: newSegmentPolarity,
           segmentActive: newSegmentActive,
+          segmentGroup: newSegmentGroup,
           segmentAxis: newSegmentAxis,
           construction,
           axisState: { axes, segmentAxis: newSegmentAxis },
@@ -1000,6 +1064,7 @@
       function contractPolyline(
         points,
         segmentActive,
+        segmentGroup,
         segmentOrient,
         segmentPolarity,
         pointPolarity,
@@ -1021,6 +1086,7 @@
             segmentOrient: segmentOrient ? segmentOrient.slice() : [],
             segmentPolarity: segmentPolarity ? segmentPolarity.slice() : [],
             segmentActive: segmentActive ? segmentActive.slice() : [],
+            segmentGroup: segmentGroup ? segmentGroup.slice() : [],
             segmentAxis: axisState?.segmentAxis ? axisState.segmentAxis.slice() : [],
             construction: { bases: [], links: [], inserted: [] },
             axisState: axisState || { axes: [], segmentAxis: [] },
@@ -1058,6 +1124,10 @@
           segmentActive && segmentActive.length === points.length - 1
             ? segmentActive
             : new Array(points.length - 1).fill(true);
+        const groupIn =
+          segmentGroup && segmentGroup.length === points.length - 1
+            ? segmentGroup
+            : new Array(points.length - 1).fill(0);
         const orientIn =
           segmentOrient && segmentOrient.length === points.length - 1
             ? segmentOrient
@@ -1078,6 +1148,7 @@
         const newSegmentOrient = [];
         const newSegmentPolarity = [];
         const newSegmentActive = [];
+        let newSegmentGroup = [];
         const newSegmentAxis = [];
         const tBase = clamp(params.contractionPosition, 0, 1);
         const intensity = clamp(params.contractionIntensity, 0, 1);
@@ -1125,9 +1196,8 @@
           const dx = p1.x - p0.x;
           const dy = p1.y - p0.y;
           const len = Math.hypot(dx, dy);
-          const minEdgeLength = Math.max(0, params.minEdgeLength ?? 0);
-          const lengthActive = len > minEdgeLength;
-          const isActive = (activeIn[i] ?? true) && lengthActive;
+          const groupId = groupIn[i] ?? 0;
+          const isActive = activeIn[i] ?? true;
 
           if (len < 1e-9) {
             newPoints.push({ x: p0.x, y: p0.y });
@@ -1138,6 +1208,7 @@
             newSegmentOrient.push(orient, orient);
             newSegmentPolarity.push(side, side);
             newSegmentActive.push(false, false);
+            newSegmentGroup.push(groupId, groupId);
             newSegmentAxis.push(parentAxisId, parentAxisId);
             continue;
           }
@@ -1150,6 +1221,7 @@
             newSegmentOrient.push(orient);
             newSegmentPolarity.push(side);
             newSegmentActive.push(false);
+            newSegmentGroup.push(groupId);
             newSegmentAxis.push(parentAxisId);
             continue;
           }
@@ -1198,6 +1270,26 @@
           newSegmentOrient.push(orientA, orientB);
           newSegmentPolarity.push(side, side);
           newSegmentActive.push(true, true);
+          let halfIndex = null;
+          if (leftRule === "E" && rightRule !== "E") {
+            halfIndex = 1;
+          } else if (rightRule === "E" && leftRule !== "E") {
+            halfIndex = 0;
+          }
+          let groupA = groupId;
+          let groupB = groupId;
+          if (groupId === 0) {
+            groupA = 1;
+            groupB = 2;
+          } else if (groupId === 1) {
+            groupA = 3;
+            groupB = 4;
+          } else if (halfIndex != null) {
+            const baseIndex = halfIndex === 0 ? 1 : 3;
+            groupA = baseIndex;
+            groupB = baseIndex + 1;
+          }
+          newSegmentGroup.push(groupA, groupB);
           newSegmentAxis.push(axisId, axisId);
           newPointAxis.push(pointAxisIn[i + 1] ?? parentAxisId);
           newPointRule.push(pointRuleIn[i + 1] ?? "carry");
@@ -1211,6 +1303,7 @@
           segmentOrient: newSegmentOrient,
           segmentPolarity: newSegmentPolarity,
           segmentActive: newSegmentActive,
+          segmentGroup: newSegmentGroup,
           segmentAxis: newSegmentAxis,
           construction,
           axisState: { axes, segmentAxis: newSegmentAxis },
@@ -1509,6 +1602,24 @@
             });
             ctx.setLineDash([]);
           }
+        }
+
+        if (params.showEdgeIds && step.segmentGroup && step.segmentGroup.length === points.length - 1) {
+          const groupSets = SYMMETRIC_DISPLAY ? [points, mirrorPoints(points)] : [points];
+          ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+          ctx.font = "11px Trebuchet MS, Segoe UI, Tahoma, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          groupSets.forEach((pts) => {
+            for (let i = 0; i < pts.length - 1; i += 1) {
+              const a = worldToCanvas(pts[i], transform);
+              const b = worldToCanvas(pts[i + 1], transform);
+              const mx = (a.x + b.x) * 0.5;
+              const my = (a.y + b.y) * 0.5;
+              const g = step.segmentGroup[i] ?? 0;
+              ctx.fillText(String(g), mx, my);
+            }
+          });
         }
       }
 
