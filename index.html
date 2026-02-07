@@ -22,33 +22,74 @@
         flex-direction: column;
         gap: 16px;
         padding: 16px;
+        height: 100vh;
+        min-height: 0;
       }
       .title {
         font-size: 18px;
         letter-spacing: 0.2px;
         margin: 0;
       }
-      .controls {
+      .workspace {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 12px 16px;
+        grid-template-columns: minmax(0, 1fr) 430px;
+        gap: 16px;
+        min-height: 0;
+        flex: 1;
+      }
+      .steps-pane {
+        min-height: 0;
+        overflow: auto;
+      }
+      .sidebar {
+        min-height: 0;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding-right: 2px;
+      }
+      .final-preview {
+        width: 400px;
+        display: flex;
+        flex-direction: column;
         align-items: center;
+        gap: 8px;
+      }
+      .final-preview canvas {
+        width: 400px;
+        height: 400px;
+        border: 1px solid #111111;
+        background: #ffffff;
+      }
+      .final-preview .label {
+        font-size: 12px;
+        color: #222222;
+      }
+      .controls {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .panel {
+        border: 1px solid #111111;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: #fcfcfc;
+      }
+      .panel-title {
+        font-size: 13px;
+        font-weight: 700;
+        margin: 0 0 2px 0;
+        letter-spacing: 0.2px;
       }
       .control {
         display: flex;
         flex-direction: column;
         gap: 6px;
         font-size: 13px;
-      }
-      .curve-control {
-        gap: 8px;
-      }
-      .curve-control canvas {
-        width: 240px;
-        height: 120px;
-        border: 1px solid #111111;
-        background: #f7f7f7;
-        touch-action: none;
       }
       .control-row {
         display: flex;
@@ -65,10 +106,10 @@
       }
       .tiles {
         display: grid;
-        grid-template-columns: repeat(4, max-content);
+        grid-template-columns: repeat(6, 400px);
         gap: 16px;
-        overflow-x: auto;
-        padding-bottom: 8px;
+        align-content: start;
+        padding-bottom: 12px;
       }
       .tile {
         width: 400px;
@@ -92,146 +133,227 @@
         cursor: pointer;
         font-size: 12px;
       }
+      @media (max-width: 1400px) {
+        .page {
+          height: auto;
+          min-height: 0;
+        }
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+        .steps-pane,
+        .sidebar {
+          overflow: visible;
+        }
+      }
     </style>
   </head>
   <body>
     <div class="page">
       <h1 class="title">260203_Leaf</h1>
 
-      <div class="controls">
-        <div class="control curve-control">
-          <span>Position</span>
-          <canvas id="positionCurve" width="240" height="120"></canvas>
-          <div class="control-row">
-            <button id="positionReset" type="button">Reset Curve</button>
-            <span class="value" id="positionVal"></span>
+      <div class="workspace">
+        <div class="steps-pane">
+          <div class="tiles" id="tiles"></div>
+        </div>
+        <div class="sidebar">
+          <div class="final-preview">
+            <canvas id="finalCanvas"></canvas>
+            <div class="label">Final Step</div>
           </div>
+          <div class="controls">
+        <div class="panel">
+          <div class="panel-title">Contraction Stage</div>
+
+          <label class="control">
+            <span>Development Mode</span>
+            <div class="control-row">
+              <select id="contractionEdgeMode">
+                <option value="all">All Edges</option>
+                <option value="edge2">Edge 2</option>
+                <option value="edge4">Edge 4</option>
+              </select>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Position</span>
+            <div class="control-row">
+              <input id="contractionPositionA" type="range" min="0.1" max="0.9" step="0.01" value="0.50" />
+              <span class="value" id="contractionPositionAVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Intensity</span>
+            <div class="control-row">
+              <input id="contractionIntensityA" type="range" min="0.1" max="0.9" step="0.01" value="0.35" />
+              <span class="value" id="contractionIntensityAVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Angle</span>
+            <div class="control-row">
+              <input id="contractionAngleA" type="range" min="1" max="89" step="1" value="15" />
+              <span class="value" id="contractionAngleAVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Contract Position</span>
+            <div class="control-row">
+              <input id="contractionPositionB" type="range" min="0.1" max="0.9" step="0.01" value="0.50" />
+              <span class="value" id="contractionPositionBVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Contract Intensity</span>
+            <div class="control-row">
+              <input id="contractionIntensityB" type="range" min="0.1" max="0.9" step="0.01" value="0.50" />
+              <span class="value" id="contractionIntensityBVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Min Edge Length</span>
+            <div class="control-row">
+              <input id="contractionMinEdgeLength" type="range" min="0.1" max="0.9" step="0.01" value="0.10" />
+              <span class="value" id="contractionMinEdgeLengthVal"></span>
+            </div>
+          </label>
         </div>
 
-        <div class="control curve-control">
-          <span>Intensity</span>
-          <canvas id="intensityCurve" width="240" height="120"></canvas>
-          <div class="control-row">
-            <button id="intensityReset" type="button">Reset Curve</button>
-            <span class="value" id="intensityVal"></span>
-          </div>
+        <div class="panel">
+          <div class="panel-title">Expansion Stage</div>
+
+          <label class="control">
+            <span>Apply Expansion Stage</span>
+            <div class="control-row">
+              <input id="enableExpansionStage" type="checkbox" />
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Position</span>
+            <div class="control-row">
+              <input id="expansionPositionA" type="range" min="0.1" max="0.9" step="0.01" value="0.50" />
+              <span class="value" id="expansionPositionAVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Intensity</span>
+            <div class="control-row">
+              <input id="expansionIntensityA" type="range" min="0.1" max="0.9" step="0.01" value="0.35" />
+              <span class="value" id="expansionIntensityAVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Angle</span>
+            <div class="control-row">
+              <input id="expansionAngleA" type="range" min="1" max="89" step="1" value="15" />
+              <span class="value" id="expansionAngleAVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Contract Position</span>
+            <div class="control-row">
+              <input id="expansionPositionB" type="range" min="0.1" max="0.9" step="0.01" value="0.50" />
+              <span class="value" id="expansionPositionBVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Contract Intensity</span>
+            <div class="control-row">
+              <input id="expansionIntensityB" type="range" min="0.1" max="0.9" step="0.01" value="0.50" />
+              <span class="value" id="expansionIntensityBVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Min Edge Length</span>
+            <div class="control-row">
+              <input id="expansionMinEdgeLength" type="range" min="0.1" max="0.9" step="0.01" value="0.10" />
+              <span class="value" id="expansionMinEdgeLengthVal"></span>
+            </div>
+          </label>
         </div>
 
-        <div class="control curve-control">
-          <span>Angle</span>
-          <canvas id="angleCurve" width="240" height="120"></canvas>
-          <div class="control-row">
-            <button id="angleReset" type="button">Reset Curve</button>
-            <span class="value" id="angleVal"></span>
+        <div class="panel">
+          <div class="panel-title">Display</div>
+
+          <label class="control">
+            <span>Show Construction Points</span>
+            <div class="control-row">
+              <input id="showConstructionPoints" type="checkbox" />
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Show Construction Lines</span>
+            <div class="control-row">
+              <input id="showConstructionLines" type="checkbox" />
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Show Axis</span>
+            <div class="control-row">
+              <input id="showAxis" type="checkbox" />
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Show Edge IDs</span>
+            <div class="control-row">
+              <input id="showEdgeIds" type="checkbox" />
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Show Polarity Points</span>
+            <div class="control-row">
+              <input id="showPolarityPoints" type="checkbox" />
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Stop Neg-Neg Edges</span>
+            <div class="control-row">
+              <input id="stopNegNeg" type="checkbox" checked />
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Jitter</span>
+            <div class="control-row">
+              <input id="jitter" type="checkbox" />
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Jitter Amount</span>
+            <div class="control-row">
+              <input id="jitterAmount" type="range" min="0.1" max="0.9" step="0.01" value="0.10" />
+              <span class="value" id="jitterVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Export</span>
+            <div class="control-row">
+              <button id="exportSteps" type="button">Export PNG Steps</button>
+            </div>
+          </label>
+        </div>
           </div>
         </div>
-
-        <div class="control curve-control">
-          <span>Contract Pos</span>
-          <canvas id="contractionPositionCurve" width="240" height="120"></canvas>
-          <div class="control-row">
-            <button id="contractionPositionReset" type="button">Reset Curve</button>
-            <span class="value" id="contractionPositionVal"></span>
-          </div>
-        </div>
-
-        <div class="control curve-control">
-          <span>Contract Intensity</span>
-          <canvas id="contractionIntensityCurve" width="240" height="120"></canvas>
-          <div class="control-row">
-            <button id="contractionIntensityReset" type="button">Reset Curve</button>
-            <span class="value" id="contractionIntensityVal"></span>
-          </div>
-        </div>
-
-        <label class="control">
-          <span>Min Edge Length</span>
-          <div class="control-row">
-            <input id="minEdgeLength" type="range" min="0.1" max="0.5" step="0.01" value="0.1" />
-            <span class="value" id="minEdgeLengthVal"></span>
-          </div>
-        </label>
-
-        <label class="control">
-          <span>Show Construction Points</span>
-          <div class="control-row">
-            <input id="showConstructionPoints" type="checkbox" />
-          </div>
-        </label>
-
-        <label class="control">
-          <span>Show Construction Lines</span>
-          <div class="control-row">
-            <input id="showConstructionLines" type="checkbox" />
-          </div>
-        </label>
-
-        <label class="control">
-          <span>Develop Edge 2</span>
-          <div class="control-row">
-            <input id="developEdge2" type="checkbox" />
-          </div>
-        </label>
-
-        <label class="control">
-          <span>Develop Edge 4</span>
-          <div class="control-row">
-            <input id="developEdge4" type="checkbox" />
-          </div>
-        </label>
-
-        <label class="control">
-          <span>Show Axis</span>
-          <div class="control-row">
-            <input id="showAxis" type="checkbox" />
-          </div>
-        </label>
-
-        <label class="control">
-          <span>Show Edge IDs</span>
-          <div class="control-row">
-            <input id="showEdgeIds" type="checkbox" />
-          </div>
-        </label>
-
-        <label class="control">
-          <span>Show Polarity Points</span>
-          <div class="control-row">
-            <input id="showPolarityPoints" type="checkbox" />
-          </div>
-        </label>
-
-        <label class="control">
-          <span>Stop Neg-Neg Edges</span>
-          <div class="control-row">
-            <input id="stopNegNeg" type="checkbox" checked />
-          </div>
-        </label>
-
-        <label class="control">
-          <span>Jitter</span>
-          <div class="control-row">
-            <input id="jitter" type="checkbox" />
-          </div>
-        </label>
-
-        <label class="control">
-          <span>Jitter Amount</span>
-          <div class="control-row">
-            <input id="jitterAmount" type="range" min="0" max="0.3" step="0.01" value="0.08" />
-            <span class="value" id="jitterVal"></span>
-          </div>
-        </label>
-
-        <label class="control">
-          <span>Export</span>
-          <div class="control-row">
-            <button id="exportSteps" type="button">Export PNG Steps</button>
-          </div>
-        </label>
       </div>
-
-      <div class="tiles" id="tiles"></div>
     </div>
 
     <script>
@@ -243,68 +365,48 @@
       const SYMMETRIC_DISPLAY = true;
 
       const ui = {
-        positionCurve: document.getElementById("positionCurve"),
-        positionReset: document.getElementById("positionReset"),
-        intensityCurve: document.getElementById("intensityCurve"),
-        intensityReset: document.getElementById("intensityReset"),
-        angleCurve: document.getElementById("angleCurve"),
-        angleReset: document.getElementById("angleReset"),
-        contractionPositionCurve: document.getElementById("contractionPositionCurve"),
-        contractionPositionReset: document.getElementById("contractionPositionReset"),
-        contractionIntensityCurve: document.getElementById("contractionIntensityCurve"),
-        contractionIntensityReset: document.getElementById("contractionIntensityReset"),
-        minEdgeLength: document.getElementById("minEdgeLength"),
+        contractionEdgeMode: document.getElementById("contractionEdgeMode"),
+        contractionPositionA: document.getElementById("contractionPositionA"),
+        contractionPositionAVal: document.getElementById("contractionPositionAVal"),
+        contractionIntensityA: document.getElementById("contractionIntensityA"),
+        contractionIntensityAVal: document.getElementById("contractionIntensityAVal"),
+        contractionAngleA: document.getElementById("contractionAngleA"),
+        contractionAngleAVal: document.getElementById("contractionAngleAVal"),
+        contractionPositionB: document.getElementById("contractionPositionB"),
+        contractionPositionBVal: document.getElementById("contractionPositionBVal"),
+        contractionIntensityB: document.getElementById("contractionIntensityB"),
+        contractionIntensityBVal: document.getElementById("contractionIntensityBVal"),
+        contractionMinEdgeLength: document.getElementById("contractionMinEdgeLength"),
+        contractionMinEdgeLengthVal: document.getElementById("contractionMinEdgeLengthVal"),
+        expansionPositionA: document.getElementById("expansionPositionA"),
+        expansionPositionAVal: document.getElementById("expansionPositionAVal"),
+        enableExpansionStage: document.getElementById("enableExpansionStage"),
+        expansionIntensityA: document.getElementById("expansionIntensityA"),
+        expansionIntensityAVal: document.getElementById("expansionIntensityAVal"),
+        expansionAngleA: document.getElementById("expansionAngleA"),
+        expansionAngleAVal: document.getElementById("expansionAngleAVal"),
+        expansionPositionB: document.getElementById("expansionPositionB"),
+        expansionPositionBVal: document.getElementById("expansionPositionBVal"),
+        expansionIntensityB: document.getElementById("expansionIntensityB"),
+        expansionIntensityBVal: document.getElementById("expansionIntensityBVal"),
+        expansionMinEdgeLength: document.getElementById("expansionMinEdgeLength"),
+        expansionMinEdgeLengthVal: document.getElementById("expansionMinEdgeLengthVal"),
         showConstructionPoints: document.getElementById("showConstructionPoints"),
         showConstructionLines: document.getElementById("showConstructionLines"),
-        developEdge2: document.getElementById("developEdge2"),
-        developEdge4: document.getElementById("developEdge4"),
         showAxis: document.getElementById("showAxis"),
         showEdgeIds: document.getElementById("showEdgeIds"),
         showPolarityPoints: document.getElementById("showPolarityPoints"),
         stopNegNeg: document.getElementById("stopNegNeg"),
         jitter: document.getElementById("jitter"),
         jitterAmount: document.getElementById("jitterAmount"),
-        positionVal: document.getElementById("positionVal"),
-        intensityVal: document.getElementById("intensityVal"),
-        angleVal: document.getElementById("angleVal"),
-        contractionPositionVal: document.getElementById("contractionPositionVal"),
-        contractionIntensityVal: document.getElementById("contractionIntensityVal"),
-        minEdgeLengthVal: document.getElementById("minEdgeLengthVal"),
         jitterVal: document.getElementById("jitterVal"),
         tiles: document.getElementById("tiles"),
+        finalCanvas: document.getElementById("finalCanvas"),
         exportSteps: document.getElementById("exportSteps"),
       };
 
       function clamp(value, min, max) {
         return Math.min(max, Math.max(min, value));
-      }
-
-      function catmullRom(p0, p1, p2, p3, t) {
-        const t2 = t * t;
-        const t3 = t2 * t;
-        return (
-          0.5 *
-          (2 * p1 +
-            (-p0 + p2) * t +
-            (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
-            (-p0 + 3 * p1 - 3 * p2 + p3) * t3)
-        );
-      }
-
-      function sampleCurve(points, t) {
-        if (!points || points.length === 0) return 0.5;
-        if (points.length === 1) return clamp(points[0].y, 0, 1);
-        const n = points.length;
-        const clamped = clamp(t, 0, 1);
-        const scaled = clamped * (n - 1);
-        const idx = Math.floor(scaled);
-        const u = scaled - idx;
-        const i0 = Math.max(0, idx - 1);
-        const i1 = idx;
-        const i2 = Math.min(n - 1, idx + 1);
-        const i3 = Math.min(n - 1, idx + 2);
-        const y = catmullRom(points[i0].y, points[i1].y, points[i2].y, points[i3].y, u);
-        return clamp(y, 0, 1);
       }
 
       function rotateVec(v, angle) {
@@ -397,27 +499,29 @@
       }
 
       function readParams() {
-        const positionCurve = positionCurveState.points;
-        const intensityCurve = intensityCurveState.points;
-        const angleCurve = angleCurveState.points;
-        const contractionPositionCurve = contractionPositionCurveState.points;
-        const contractionIntensityCurve = contractionIntensityCurveState.points;
-        const params = {
-          position: sampleCurve(positionCurve, 0.5),
-          positionCurve,
-          intensity: sampleCurve(intensityCurve, 0.5),
-          intensityCurve,
-          angle: sampleCurve(angleCurve, 0.5) * 90,
-          angleCurve,
-          contractionPosition: sampleCurve(contractionPositionCurve, 0.5),
-          contractionPositionCurve,
-          contractionIntensity: sampleCurve(contractionIntensityCurve, 0.5),
-          contractionIntensityCurve,
-          minEdgeLength: parseFloat(ui.minEdgeLength.value),
+        const contractionStage = {
+          mode: ui.contractionEdgeMode.value,
+          position: parseFloat(ui.contractionPositionA.value),
+          intensity: parseFloat(ui.contractionIntensityA.value),
+          angle: parseFloat(ui.contractionAngleA.value),
+          contractionPosition: parseFloat(ui.contractionPositionB.value),
+          contractionIntensity: parseFloat(ui.contractionIntensityB.value),
+          minEdgeLength: parseFloat(ui.contractionMinEdgeLength.value),
+        };
+        const expansionStage = {
+          position: parseFloat(ui.expansionPositionA.value),
+          intensity: parseFloat(ui.expansionIntensityA.value),
+          angle: parseFloat(ui.expansionAngleA.value),
+          contractionPosition: parseFloat(ui.expansionPositionB.value),
+          contractionIntensity: parseFloat(ui.expansionIntensityB.value),
+          minEdgeLength: parseFloat(ui.expansionMinEdgeLength.value),
+        };
+        return {
+          contractionStage,
+          expansionStage,
+          enableExpansionStage: ui.enableExpansionStage.checked,
           showConstructionPoints: ui.showConstructionPoints.checked,
           showConstructionLines: ui.showConstructionLines.checked,
-          developEdge2: ui.developEdge2.checked,
-          developEdge4: ui.developEdge4.checked,
           showAxis: ui.showAxis.checked,
           showEdgeIds: ui.showEdgeIds.checked,
           showPolarityPoints: ui.showPolarityPoints.checked,
@@ -425,173 +529,33 @@
           jitter: ui.jitter.checked,
           jitterAmount: parseFloat(ui.jitterAmount.value),
         };
-        return params;
       }
 
       function updateReadouts(params) {
-        ui.positionVal.textContent = params.position.toFixed(2);
-        ui.intensityVal.textContent = params.intensity.toFixed(2);
-        ui.angleVal.textContent = params.angle.toFixed(0);
-        ui.contractionPositionVal.textContent = params.contractionPosition.toFixed(2);
-        ui.contractionIntensityVal.textContent = params.contractionIntensity.toFixed(2);
-        ui.minEdgeLengthVal.textContent = params.minEdgeLength.toFixed(2);
+        ui.contractionPositionAVal.textContent = params.contractionStage.position.toFixed(2);
+        ui.contractionIntensityAVal.textContent = params.contractionStage.intensity.toFixed(2);
+        ui.contractionAngleAVal.textContent = params.contractionStage.angle.toFixed(0);
+        ui.contractionPositionBVal.textContent = params.contractionStage.contractionPosition.toFixed(2);
+        ui.contractionIntensityBVal.textContent =
+          params.contractionStage.contractionIntensity.toFixed(2);
+        ui.contractionMinEdgeLengthVal.textContent =
+          params.contractionStage.minEdgeLength.toFixed(2);
+        ui.expansionPositionAVal.textContent = params.expansionStage.position.toFixed(2);
+        ui.expansionIntensityAVal.textContent = params.expansionStage.intensity.toFixed(2);
+        ui.expansionAngleAVal.textContent = params.expansionStage.angle.toFixed(0);
+        ui.expansionPositionBVal.textContent = params.expansionStage.contractionPosition.toFixed(2);
+        ui.expansionIntensityBVal.textContent =
+          params.expansionStage.contractionIntensity.toFixed(2);
+        ui.expansionMinEdgeLengthVal.textContent = params.expansionStage.minEdgeLength.toFixed(2);
+        const expansionDisabled = !params.enableExpansionStage;
+        ui.expansionPositionA.disabled = expansionDisabled;
+        ui.expansionIntensityA.disabled = expansionDisabled;
+        ui.expansionAngleA.disabled = expansionDisabled;
+        ui.expansionPositionB.disabled = expansionDisabled;
+        ui.expansionIntensityB.disabled = expansionDisabled;
+        ui.expansionMinEdgeLength.disabled = expansionDisabled;
         ui.jitterVal.textContent = params.jitterAmount.toFixed(2);
         ui.jitterAmount.disabled = !params.jitter;
-      }
-
-      function createCurveState(defaultY) {
-        return {
-          points: Array.from({ length: 4 }, (_, i) => ({ x: i / 3, y: defaultY })),
-          activeIndex: null,
-          stepCount: 0,
-          defaultY,
-        };
-      }
-
-      const positionCurveState = createCurveState(0.5);
-      const intensityCurveState = createCurveState(0.35);
-      const angleCurveState = createCurveState(0);
-      const contractionPositionCurveState = createCurveState(0.5);
-      const contractionIntensityCurveState = createCurveState(0.5);
-
-      function curveToCanvas(p, rect, padding) {
-        return {
-          x: rect.left + padding + p.x * (rect.width - padding * 2),
-          y: rect.top + padding + (1 - p.y) * (rect.height - padding * 2),
-        };
-      }
-
-      function canvasToCurve(x, y, rect, padding) {
-        const nx = clamp((x - rect.left - padding) / (rect.width - padding * 2), 0, 1);
-        const ny = clamp(1 - (y - rect.top - padding) / (rect.height - padding * 2), 0, 1);
-        return { x: nx, y: ny };
-      }
-
-      function drawCurve(canvas, state) {
-        if (!canvas) return;
-        const ctx = canvas.getContext("2d");
-        const rect = canvas.getBoundingClientRect();
-        const dpr = window.devicePixelRatio || 1;
-        const cssW = Math.max(1, rect.width);
-        const cssH = Math.max(1, rect.height);
-        canvas.width = Math.round(cssW * dpr);
-        canvas.height = Math.round(cssH * dpr);
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        const padding = 10;
-        const w = cssW;
-        const h = cssH;
-
-        ctx.clearRect(0, 0, w, h);
-        ctx.fillStyle = "#f7f7f7";
-        ctx.fillRect(0, 0, w, h);
-
-        ctx.strokeStyle = "rgba(0,0,0,0.08)";
-        ctx.lineWidth = 1;
-        const grid = 6;
-        for (let i = 0; i <= grid; i += 1) {
-          const x = padding + ((w - padding * 2) * i) / grid;
-          const y = padding + ((h - padding * 2) * i) / grid;
-          ctx.beginPath();
-          ctx.moveTo(x, padding);
-          ctx.lineTo(x, h - padding);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(padding, y);
-          ctx.lineTo(w - padding, y);
-          ctx.stroke();
-        }
-
-        if (state.stepCount > 0) {
-          ctx.fillStyle = "rgba(0,0,0,0.6)";
-          ctx.font = "11px Trebuchet MS, Segoe UI, Tahoma, sans-serif";
-          ctx.fillText(`Steps: ${state.stepCount}`, padding, h - padding + 14);
-        }
-
-        ctx.strokeStyle = "#111111";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        for (let i = 0; i <= 80; i += 1) {
-          const t = i / 80;
-          const y = sampleCurve(state.points, t);
-          const x = padding + t * (w - padding * 2);
-          const py = padding + (1 - y) * (h - padding * 2);
-          if (i === 0) ctx.moveTo(x, py);
-          else ctx.lineTo(x, py);
-        }
-        ctx.stroke();
-
-        ctx.fillStyle = "#ffffff";
-        ctx.strokeStyle = "#111111";
-        ctx.lineWidth = 1.5;
-        for (const p of state.points) {
-          const cx = padding + p.x * (w - padding * 2);
-          const cy = padding + (1 - p.y) * (h - padding * 2);
-          ctx.beginPath();
-          ctx.arc(cx, cy, 5.5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-        }
-      }
-
-      function drawAllCurves() {
-        drawCurve(ui.positionCurve, positionCurveState);
-        drawCurve(ui.intensityCurve, intensityCurveState);
-        drawCurve(ui.angleCurve, angleCurveState);
-        drawCurve(ui.contractionPositionCurve, contractionPositionCurveState);
-        drawCurve(ui.contractionIntensityCurve, contractionIntensityCurveState);
-      }
-
-      function pickCurvePoint(canvas, state, x, y) {
-        const rect = canvas.getBoundingClientRect();
-        const padding = 10;
-        let closest = null;
-        let closestDist = Infinity;
-        state.points.forEach((p, idx) => {
-          const pt = curveToCanvas(p, rect, padding);
-          const dx = pt.x - x;
-          const dy = pt.y - y;
-          const d2 = dx * dx + dy * dy;
-          if (d2 < 10 * 10 && d2 < closestDist) {
-            closest = idx;
-            closestDist = d2;
-          }
-        });
-        return closest;
-      }
-
-      function updateCurvePoint(canvas, state, idx, x, y) {
-        const rect = canvas.getBoundingClientRect();
-        const padding = 10;
-        const cp = canvasToCurve(x, y, rect, padding);
-        state.points[idx].y = cp.y;
-      }
-
-      function attachCurveHandlers(canvas, state) {
-        if (!canvas) return;
-        canvas.addEventListener("pointerdown", (event) => {
-          event.preventDefault();
-          const idx = pickCurvePoint(canvas, state, event.clientX, event.clientY);
-          if (idx == null) return;
-          state.activeIndex = idx;
-          canvas.setPointerCapture(event.pointerId);
-          updateCurvePoint(canvas, state, idx, event.clientX, event.clientY);
-          drawAllCurves();
-          update();
-        });
-        canvas.addEventListener("pointermove", (event) => {
-          event.preventDefault();
-          if (state.activeIndex == null) return;
-          updateCurvePoint(canvas, state, state.activeIndex, event.clientX, event.clientY);
-          drawAllCurves();
-          update();
-        });
-        canvas.addEventListener("pointerup", (event) => {
-          state.activeIndex = null;
-          canvas.releasePointerCapture(event.pointerId);
-        });
-        canvas.addEventListener("pointerleave", () => {
-          state.activeIndex = null;
-        });
       }
 
       let lastStepCount = 0;
@@ -602,7 +566,8 @@
           { x: 0, y: -0.5 },
           { x: 0, y: 0.5 },
         ];
-        const maxAutoSteps = 120;
+        const maxAutoSteps = params.enableExpansionStage ? 480 : 240;
+        const maxStageSteps = 120;
         const rootAxisDir = normalizeVec({
           x: baseLine[1].x - baseLine[0].x,
           y: baseLine[1].y - baseLine[0].y,
@@ -645,95 +610,222 @@
         });
 
         let stepIndex = 1;
-        while (stepIndex <= maxAutoSteps) {
-          const prev = steps[steps.length - 1];
-          const denom = Math.max(1, (stepCountHint || maxAutoSteps) - 1);
-          const tCurve = (stepIndex - 1) / denom;
-          const stepParams = {
-            ...params,
-            position: sampleCurve(params.positionCurve, tCurve),
-            intensity: sampleCurve(params.intensityCurve, tCurve),
-            angle: sampleCurve(params.angleCurve, tCurve) * 90,
-            contractionPosition: sampleCurve(params.contractionPositionCurve, tCurve),
-            contractionIntensity: sampleCurve(params.contractionIntensityCurve, tCurve),
-          };
-          const expansion = expandPolyline(
-            prev.points,
-            prev.segmentActive,
-            prev.segmentGroup,
-            prev.segmentOrient,
-            prev.segmentPolarity,
-            prev.pointPolarity,
-            prev.pointAxis,
-            prev.pointRule,
-            stepParams,
-            stepIndex,
-            prev.meta.polarity,
-            axisState
-          );
-          axisState = expansion.axisState;
-          steps.push({
-            points: expansion.points,
-            pointPolarity: expansion.pointPolarity,
-            pointAxis: expansion.pointAxis,
-            pointRule: expansion.pointRule,
-            segmentOrient: expansion.segmentOrient,
-            segmentPolarity: expansion.segmentPolarity,
-            segmentActive: expansion.segmentActive,
-            segmentGroup: expansion.segmentGroup,
-            segmentAxis: expansion.segmentAxis,
-            construction: expansion.construction,
-            prevPoints: prev.points,
-            meta: expansion.meta,
-          });
-          const expansionCount = expansion.meta?.expansionPoints?.length ?? 0;
-          if (expansionCount === 0) break;
+        const stageSequence = [
+          { stage: params.contractionStage, useEdgeMode: true },
+        ];
+        if (params.enableExpansionStage) {
+          stageSequence.push({ stage: params.expansionStage, useEdgeMode: false });
+        }
 
-          stepIndex += 1;
+        for (const stageItem of stageSequence) {
+          let stageStepCount = 0;
+          if (!stageItem.useEdgeMode && steps.length > 0) {
+            const last = steps[steps.length - 1];
+            steps[steps.length - 1] = {
+              ...last,
+              // Stage handoff: allow expansion stage to continue from final stage-1 geometry.
+              segmentActive: new Array(Math.max(0, last.points.length - 1)).fill(true),
+              // Reset group labels so stage 2 starts from all edges uniformly.
+              segmentGroup: new Array(Math.max(0, last.points.length - 1)).fill(0),
+            };
+          }
+          while (stepIndex <= maxAutoSteps && stageStepCount < maxStageSteps) {
+            const prev = steps[steps.length - 1];
+            const axisStateBeforeExpansion = axisState;
+            const expansionParams = {
+              position: stageItem.stage.position,
+              intensity: stageItem.stage.intensity,
+              angle: stageItem.stage.angle,
+              contractionPosition: stageItem.stage.contractionPosition,
+              contractionIntensity: stageItem.stage.contractionIntensity,
+              minEdgeLength: stageItem.stage.minEdgeLength,
+              developEdge2: stageItem.useEdgeMode && stageItem.stage.mode === "edge2",
+              developEdge4: stageItem.useEdgeMode && stageItem.stage.mode === "edge4",
+              stopNegNeg: params.stopNegNeg,
+              jitter: params.jitter,
+              jitterAmount: params.jitterAmount,
+            };
+            const expansion = expandPolyline(
+              prev.points,
+              prev.segmentActive,
+              prev.segmentGroup,
+              prev.segmentOrient,
+              prev.segmentPolarity,
+              prev.pointPolarity,
+              prev.pointAxis,
+              prev.pointRule,
+              expansionParams,
+              stepIndex,
+              prev.meta.polarity,
+              axisState
+            );
+            axisState = expansion.axisState;
+            steps.push({
+              points: expansion.points,
+              pointPolarity: expansion.pointPolarity,
+              pointAxis: expansion.pointAxis,
+              pointRule: expansion.pointRule,
+              segmentOrient: expansion.segmentOrient,
+              segmentPolarity: expansion.segmentPolarity,
+              segmentActive: expansion.segmentActive,
+              segmentGroup: expansion.segmentGroup,
+              segmentAxis: expansion.segmentAxis,
+              construction: expansion.construction,
+              prevPoints: prev.points,
+              meta: expansion.meta,
+            });
+            stageStepCount += 1;
+            const expansionCount = expansion.meta?.expansionPoints?.length ?? 0;
+            if (expansionCount === 0) {
+              // Stage 1 must terminate on contraction; drop the terminal empty expansion step.
+              if (stageItem.useEdgeMode) {
+                steps.pop();
+                axisState = axisStateBeforeExpansion;
+                stageStepCount -= 1;
+              } else {
+                // Stage 2 must end on expansion. Replace empty expansion with forced all-edge expansion.
+                steps.pop();
+                axisState = axisStateBeforeExpansion;
+                stageStepCount -= 1;
+                const forcedExpansion = expandPolyline(
+                  prev.points,
+                  new Array(Math.max(0, prev.points.length - 1)).fill(true),
+                  new Array(Math.max(0, prev.points.length - 1)).fill(0),
+                  prev.segmentOrient,
+                  prev.segmentPolarity,
+                  prev.pointPolarity,
+                  prev.pointAxis,
+                  prev.pointRule,
+                  {
+                    ...expansionParams,
+                    minEdgeLength: -1,
+                    developEdge2: false,
+                    developEdge4: false,
+                  },
+                  stepIndex,
+                  prev.meta.polarity,
+                  axisState
+                );
+                axisState = forcedExpansion.axisState;
+                steps.push({
+                  points: forcedExpansion.points,
+                  pointPolarity: forcedExpansion.pointPolarity,
+                  pointAxis: forcedExpansion.pointAxis,
+                  pointRule: forcedExpansion.pointRule,
+                  segmentOrient: forcedExpansion.segmentOrient,
+                  segmentPolarity: forcedExpansion.segmentPolarity,
+                  segmentActive: forcedExpansion.segmentActive,
+                  segmentGroup: forcedExpansion.segmentGroup,
+                  segmentAxis: forcedExpansion.segmentAxis,
+                  construction: forcedExpansion.construction,
+                  prevPoints: prev.points,
+                  meta: forcedExpansion.meta,
+                });
+                stageStepCount += 1;
+              }
+              break;
+            }
+
+            stepIndex += 1;
+            if (stepIndex > maxAutoSteps || stageStepCount >= maxStageSteps) {
+              // Stage 1 must terminate on contraction across all development modes.
+              if (stageItem.useEdgeMode) {
+                steps.pop();
+                axisState = axisStateBeforeExpansion;
+                stageStepCount -= 1;
+              }
+              break;
+            }
+            const prevAfterExpansion = steps[steps.length - 1];
+            const contractionParams = {
+              position: stageItem.stage.position,
+              intensity: stageItem.stage.intensity,
+              angle: stageItem.stage.angle,
+              contractionPosition: stageItem.stage.contractionPosition,
+              contractionIntensity: stageItem.stage.contractionIntensity,
+              minEdgeLength: stageItem.stage.minEdgeLength,
+              stopNegNeg: params.stopNegNeg,
+              jitter: false,
+              jitterAmount: 0,
+            };
+            const contraction = contractPolyline(
+              prevAfterExpansion.points,
+              prevAfterExpansion.segmentActive,
+              prevAfterExpansion.segmentGroup,
+              prevAfterExpansion.segmentOrient,
+              prevAfterExpansion.segmentPolarity,
+              prevAfterExpansion.pointPolarity,
+              prevAfterExpansion.pointAxis,
+              prevAfterExpansion.pointRule,
+              contractionParams,
+              stepIndex,
+              prevAfterExpansion.meta.targets,
+              prevAfterExpansion.meta.center,
+              prevAfterExpansion.meta.polarity,
+              axisState
+            );
+            axisState = contraction.axisState;
+            steps.push({
+              points: contraction.points,
+              pointPolarity: contraction.pointPolarity,
+              pointAxis: contraction.pointAxis,
+              pointRule: contraction.pointRule,
+              segmentOrient: contraction.segmentOrient,
+              segmentPolarity: contraction.segmentPolarity,
+              segmentActive: contraction.segmentActive,
+              segmentGroup: contraction.segmentGroup,
+              segmentAxis: contraction.segmentAxis,
+              construction: contraction.construction,
+              prevPoints: prevAfterExpansion.points,
+              meta: contraction.meta,
+            });
+            stageStepCount += 1;
+
+            stepIndex += 1;
+            if (stepIndex > maxAutoSteps || stageStepCount >= maxStageSteps) {
+              if (!stageItem.useEdgeMode) {
+                // Stage 2 must end on expansion even when the limit is reached after contraction.
+                const prevFinal = steps[steps.length - 1];
+                const finalExpansion = expandPolyline(
+                  prevFinal.points,
+                  new Array(Math.max(0, prevFinal.points.length - 1)).fill(true),
+                  new Array(Math.max(0, prevFinal.points.length - 1)).fill(0),
+                  prevFinal.segmentOrient,
+                  prevFinal.segmentPolarity,
+                  prevFinal.pointPolarity,
+                  prevFinal.pointAxis,
+                  prevFinal.pointRule,
+                  {
+                    ...expansionParams,
+                    minEdgeLength: -1,
+                    developEdge2: false,
+                    developEdge4: false,
+                  },
+                  stepIndex,
+                  prevFinal.meta.polarity,
+                  axisState
+                );
+                axisState = finalExpansion.axisState;
+                steps.push({
+                  points: finalExpansion.points,
+                  pointPolarity: finalExpansion.pointPolarity,
+                  pointAxis: finalExpansion.pointAxis,
+                  pointRule: finalExpansion.pointRule,
+                  segmentOrient: finalExpansion.segmentOrient,
+                  segmentPolarity: finalExpansion.segmentPolarity,
+                  segmentActive: finalExpansion.segmentActive,
+                  segmentGroup: finalExpansion.segmentGroup,
+                  segmentAxis: finalExpansion.segmentAxis,
+                  construction: finalExpansion.construction,
+                  prevPoints: prevFinal.points,
+                  meta: finalExpansion.meta,
+                });
+                stageStepCount += 1;
+              }
+              break;
+            }
+          }
           if (stepIndex > maxAutoSteps) break;
-          const prevAfterExpansion = steps[steps.length - 1];
-          const denomAfter = Math.max(1, (stepCountHint || maxAutoSteps) - 1);
-          const tCurveAfter = (stepIndex - 1) / denomAfter;
-          const stepParamsAfter = {
-            ...params,
-            position: sampleCurve(params.positionCurve, tCurveAfter),
-            intensity: sampleCurve(params.intensityCurve, tCurveAfter),
-            angle: sampleCurve(params.angleCurve, tCurveAfter) * 90,
-            contractionPosition: sampleCurve(params.contractionPositionCurve, tCurveAfter),
-            contractionIntensity: sampleCurve(params.contractionIntensityCurve, tCurveAfter),
-          };
-          const contraction = contractPolyline(
-            prevAfterExpansion.points,
-            prevAfterExpansion.segmentActive,
-            prevAfterExpansion.segmentGroup,
-            prevAfterExpansion.segmentOrient,
-            prevAfterExpansion.segmentPolarity,
-            prevAfterExpansion.pointPolarity,
-            prevAfterExpansion.pointAxis,
-            prevAfterExpansion.pointRule,
-            stepParamsAfter,
-            stepIndex,
-            prevAfterExpansion.meta.targets,
-            prevAfterExpansion.meta.center,
-            prevAfterExpansion.meta.polarity,
-            axisState
-          );
-          axisState = contraction.axisState;
-          steps.push({
-            points: contraction.points,
-            pointPolarity: contraction.pointPolarity,
-            pointAxis: contraction.pointAxis,
-            pointRule: contraction.pointRule,
-            segmentOrient: contraction.segmentOrient,
-            segmentPolarity: contraction.segmentPolarity,
-            segmentActive: contraction.segmentActive,
-            segmentGroup: contraction.segmentGroup,
-            segmentAxis: contraction.segmentAxis,
-            construction: contraction.construction,
-            prevPoints: prevAfterExpansion.points,
-            meta: contraction.meta,
-          });
-          stepIndex += 1;
         }
 
         return steps;
@@ -1656,6 +1748,25 @@
         });
       }
 
+      function renderFinalStep(stepPolylines, params) {
+        if (!ui.finalCanvas) return;
+        const finalStep = stepPolylines.length > 0 ? stepPolylines[stepPolylines.length - 1] : null;
+        if (!finalStep) {
+          const dpr = window.devicePixelRatio || 1;
+          ui.finalCanvas.width = Math.round(TILE_SIZE * dpr);
+          ui.finalCanvas.height = Math.round(TILE_SIZE * dpr);
+          ui.finalCanvas.style.width = `${TILE_SIZE}px`;
+          ui.finalCanvas.style.height = `${TILE_SIZE}px`;
+          const ctx = ui.finalCanvas.getContext("2d");
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          ctx.clearRect(0, 0, TILE_SIZE, TILE_SIZE);
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
+          return;
+        }
+        drawStep(ui.finalCanvas, finalStep, params);
+      }
+
       function update() {
         const params = readParams();
         updateReadouts(params);
@@ -1667,57 +1778,12 @@
           estimate = steps.length;
         }
         lastStepCount = steps.length;
-        positionCurveState.stepCount = lastStepCount;
-        intensityCurveState.stepCount = lastStepCount;
-        angleCurveState.stepCount = lastStepCount;
-        contractionPositionCurveState.stepCount = lastStepCount;
-        contractionIntensityCurveState.stepCount = lastStepCount;
-        drawAllCurves();
         renderSteps(steps, params);
+        renderFinalStep(steps, params);
       }
 
       const inputs = document.querySelectorAll("input, select");
       inputs.forEach((input) => input.addEventListener("input", update));
-      ui.positionReset.addEventListener("click", () => {
-        positionCurveState.points.forEach((p) => {
-          p.y = positionCurveState.defaultY;
-        });
-        drawAllCurves();
-        update();
-      });
-      ui.intensityReset.addEventListener("click", () => {
-        intensityCurveState.points.forEach((p) => {
-          p.y = intensityCurveState.defaultY;
-        });
-        drawAllCurves();
-        update();
-      });
-      ui.angleReset.addEventListener("click", () => {
-        angleCurveState.points.forEach((p) => {
-          p.y = angleCurveState.defaultY;
-        });
-        drawAllCurves();
-        update();
-      });
-      ui.contractionPositionReset.addEventListener("click", () => {
-        contractionPositionCurveState.points.forEach((p) => {
-          p.y = contractionPositionCurveState.defaultY;
-        });
-        drawAllCurves();
-        update();
-      });
-      ui.contractionIntensityReset.addEventListener("click", () => {
-        contractionIntensityCurveState.points.forEach((p) => {
-          p.y = contractionIntensityCurveState.defaultY;
-        });
-        drawAllCurves();
-        update();
-      });
-      attachCurveHandlers(ui.positionCurve, positionCurveState);
-      attachCurveHandlers(ui.intensityCurve, intensityCurveState);
-      attachCurveHandlers(ui.angleCurve, angleCurveState);
-      attachCurveHandlers(ui.contractionPositionCurve, contractionPositionCurveState);
-      attachCurveHandlers(ui.contractionIntensityCurve, contractionIntensityCurveState);
       window.addEventListener("resize", update);
       ui.exportSteps.addEventListener("click", () => exportSteps());
 
