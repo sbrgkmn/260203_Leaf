@@ -76,6 +76,9 @@ This repository now uses the staged pipeline version as the default code version
 - Smoothing
 - Export PNG Steps
 
+## Known Issues
+- Show Form triangulation still needs a fix in some edge cases.
+
 ## Getting Started
 1. Start a local server in this folder:
    - py -m http.server 8000

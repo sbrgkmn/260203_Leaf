@@ -106,7 +106,7 @@
       }
       .tiles {
         display: grid;
-        grid-template-columns: repeat(6, 400px);
+        grid-template-columns: repeat(4, 400px);
         gap: 16px;
         align-content: start;
         padding-bottom: 12px;
@@ -179,7 +179,7 @@
           <label class="control">
             <span>Position</span>
             <div class="control-row">
-              <input id="contractionPositionA" type="range" min="0.1" max="0.9" step="0.01" value="0.50" />
+              <input id="contractionPositionA" type="range" min="0.1" max="0.9" step="0.01" value="0.28" />
               <span class="value" id="contractionPositionAVal"></span>
             </div>
           </label>
@@ -187,7 +187,7 @@
           <label class="control">
             <span>Intensity</span>
             <div class="control-row">
-              <input id="contractionIntensityA" type="range" min="0.1" max="0.9" step="0.01" value="0.35" />
+              <input id="contractionIntensityA" type="range" min="0.1" max="0.9" step="0.01" value="0.38" />
               <span class="value" id="contractionIntensityAVal"></span>
             </div>
           </label>
@@ -195,7 +195,7 @@
           <label class="control">
             <span>Angle</span>
             <div class="control-row">
-              <input id="contractionAngleA" type="range" min="1" max="89" step="1" value="15" />
+              <input id="contractionAngleA" type="range" min="1" max="89" step="1" value="49" />
               <span class="value" id="contractionAngleAVal"></span>
             </div>
           </label>
@@ -211,7 +211,7 @@
           <label class="control">
             <span>Contract Intensity</span>
             <div class="control-row">
-              <input id="contractionIntensityB" type="range" min="0.1" max="0.9" step="0.01" value="0.50" />
+              <input id="contractionIntensityB" type="range" min="0.1" max="0.9" step="0.01" value="0.90" />
               <span class="value" id="contractionIntensityBVal"></span>
             </div>
           </label>
@@ -231,14 +231,14 @@
           <label class="control">
             <span>Apply Expansion Stage</span>
             <div class="control-row">
-              <input id="enableExpansionStage" type="checkbox" />
+              <input id="enableExpansionStage" type="checkbox" checked />
             </div>
           </label>
 
           <label class="control">
             <span>Position</span>
             <div class="control-row">
-              <input id="expansionPositionA" type="range" min="0.1" max="0.9" step="0.01" value="0.50" />
+              <input id="expansionPositionA" type="range" min="0.1" max="0.9" step="0.01" value="0.34" />
               <span class="value" id="expansionPositionAVal"></span>
             </div>
           </label>
@@ -246,7 +246,7 @@
           <label class="control">
             <span>Intensity</span>
             <div class="control-row">
-              <input id="expansionIntensityA" type="range" min="0.1" max="0.9" step="0.01" value="0.35" />
+              <input id="expansionIntensityA" type="range" min="0.1" max="0.9" step="0.01" value="0.51" />
               <span class="value" id="expansionIntensityAVal"></span>
             </div>
           </label>
@@ -254,7 +254,7 @@
           <label class="control">
             <span>Angle</span>
             <div class="control-row">
-              <input id="expansionAngleA" type="range" min="1" max="89" step="1" value="15" />
+              <input id="expansionAngleA" type="range" min="1" max="89" step="1" value="63" />
               <span class="value" id="expansionAngleAVal"></span>
             </div>
           </label>
@@ -262,7 +262,7 @@
           <label class="control">
             <span>Contract Position</span>
             <div class="control-row">
-              <input id="expansionPositionB" type="range" min="0.1" max="0.9" step="0.01" value="0.50" />
+              <input id="expansionPositionB" type="range" min="0.1" max="0.9" step="0.01" value="0.60" />
               <span class="value" id="expansionPositionBVal"></span>
             </div>
           </label>
@@ -270,7 +270,7 @@
           <label class="control">
             <span>Contract Intensity</span>
             <div class="control-row">
-              <input id="expansionIntensityB" type="range" min="0.1" max="0.9" step="0.01" value="0.50" />
+              <input id="expansionIntensityB" type="range" min="0.1" max="0.9" step="0.01" value="0.46" />
               <span class="value" id="expansionIntensityBVal"></span>
             </div>
           </label>
@@ -278,7 +278,7 @@
           <label class="control">
             <span>Min Edge Length</span>
             <div class="control-row">
-              <input id="expansionMinEdgeLength" type="range" min="0.1" max="0.9" step="0.01" value="0.10" />
+              <input id="expansionMinEdgeLength" type="range" min="0.1" max="0.9" step="0.01" value="0.40" />
               <span class="value" id="expansionMinEdgeLengthVal"></span>
             </div>
           </label>
@@ -302,6 +302,14 @@
           </label>
 
           <label class="control">
+            <span>Form Opacity</span>
+            <div class="control-row">
+              <input id="showFormOpacity" type="range" min="0.20" max="1" step="0.01" value="0.35" />
+              <span class="value" id="showFormOpacityVal"></span>
+            </div>
+          </label>
+
+          <label class="control">
             <span>Show Construction Lines</span>
             <div class="control-row">
               <input id="showConstructionLines" type="checkbox" />
@@ -321,6 +329,14 @@
               <input id="showEdgeIds" type="checkbox" />
             </div>
           </label>
+
+          <label class="control">
+            <span>Show Triangle IDs</span>
+            <div class="control-row">
+              <input id="showTriangleIds" type="checkbox" />
+            </div>
+          </label>
+
 
           <label class="control">
             <span>Show Polarity Points</span>
@@ -408,9 +424,12 @@
         expansionMinEdgeLengthVal: document.getElementById("expansionMinEdgeLengthVal"),
         showConstructionPoints: document.getElementById("showConstructionPoints"),
         showForm: document.getElementById("showForm"),
+        showFormOpacity: document.getElementById("showFormOpacity"),
+        showFormOpacityVal: document.getElementById("showFormOpacityVal"),
         showConstructionLines: document.getElementById("showConstructionLines"),
         showAxis: document.getElementById("showAxis"),
         showEdgeIds: document.getElementById("showEdgeIds"),
+        showTriangleIds: document.getElementById("showTriangleIds"),
         showPolarityPoints: document.getElementById("showPolarityPoints"),
         stopNegNeg: document.getElementById("stopNegNeg"),
         jitter: document.getElementById("jitter"),
@@ -485,7 +504,23 @@
         return x - Math.floor(x);
       }
 
-      function buildFormTriangles(points, targets) {
+      function selectPersistTriangles(triangles) {
+        if (!triangles || triangles.length === 0) return [];
+        return triangles.filter((tri) => {
+          const id = tri && tri.id ? String(tri.id).toLowerCase() : "";
+          return id.startsWith("xc-") || id.startsWith("hold-");
+        });
+      }
+
+      function edgeIndexFromId(id) {
+        if (!id) return null;
+        const match = String(id).match(/-e(\d+)/i);
+        if (!match) return null;
+        const value = Number.parseInt(match[1], 10);
+        return Number.isFinite(value) ? value : null;
+      }
+
+      function buildFormTriangles(points, targets, idPrefix = "f") {
         if (!points || points.length < 2 || !targets || targets.length !== points.length - 1) {
           return [];
         }
@@ -493,7 +528,7 @@
         for (let i = 0; i < points.length - 1; i += 1) {
           const center = targets[i];
           if (!center) continue;
-          tris.push({ a: center, b: points[i], c: points[i + 1] });
+          tris.push({ a: center, b: points[i], c: points[i + 1], id: `${idPrefix}-${i}` });
         }
         return tris;
       }
@@ -553,9 +588,11 @@
           enableExpansionStage: ui.enableExpansionStage.checked,
           showConstructionPoints: ui.showConstructionPoints.checked,
           showForm: ui.showForm.checked,
+          showFormOpacity: parseFloat(ui.showFormOpacity.value),
           showConstructionLines: ui.showConstructionLines.checked,
           showAxis: ui.showAxis.checked,
           showEdgeIds: ui.showEdgeIds.checked,
+          showTriangleIds: ui.showTriangleIds.checked,
           showPolarityPoints: ui.showPolarityPoints.checked,
           stopNegNeg: ui.stopNegNeg.checked,
           jitter: ui.jitter.checked,
@@ -587,26 +624,52 @@
         ui.expansionPositionB.disabled = expansionDisabled;
         ui.expansionIntensityB.disabled = expansionDisabled;
         ui.expansionMinEdgeLength.disabled = expansionDisabled;
+        ui.showFormOpacityVal.textContent = params.showFormOpacity.toFixed(2);
         ui.jitterVal.textContent = params.jitterAmount.toFixed(2);
         ui.smoothingVal.textContent = params.smoothing.toFixed(2);
         ui.jitterAmount.disabled = !params.jitter;
       }
 
-      let lastStepCount = 0;
-
-      function generateSteps(params, stepCountHint = 0) {
+      function generateSteps(params) {
         const steps = [];
-        let persistedContractionTriangles = [];
+        const persistTriangleMap = new Map();
         const attachFormTriangles = (stepObj) => {
           if (!stepObj || !stepObj.meta) return stepObj;
+          const stepTag =
+            stepObj.meta.stepIndex != null ? String(stepObj.meta.stepIndex) : "x";
+          const typeTag = stepObj.meta.type ? stepObj.meta.type[0] : "f";
+          const formPrefix = `${typeTag}${stepTag}`;
           const currentTriangles =
             stepObj.meta.type === "expansion" && stepObj.meta.expansionTriangles?.length
               ? stepObj.meta.expansionTriangles
-              : buildFormTriangles(stepObj.points, stepObj.meta.targets);
-          stepObj.meta.formTriangles = currentTriangles.concat(persistedContractionTriangles);
-          if (stepObj.meta.type === "contraction") {
-            persistedContractionTriangles = persistedContractionTriangles.concat(currentTriangles);
+              : buildFormTriangles(stepObj.points, stepObj.meta.targets, formPrefix);
+          const persistMatches =
+            stepObj.meta.type === "expansion" ? selectPersistTriangles(currentTriangles) : [];
+          if (persistMatches.length) {
+            persistMatches.forEach((tri) => {
+              if (tri && tri.id) persistTriangleMap.set(String(tri.id), tri);
+            });
           }
+          const existingIds = new Set(
+            currentTriangles.map((tri) => (tri && tri.id ? String(tri.id) : "")).filter(Boolean)
+          );
+          const merged = currentTriangles.slice();
+          const developedSet =
+            stepObj.meta.type === "expansion" && Array.isArray(stepObj.meta.developedEdges)
+              ? new Set(stepObj.meta.developedEdges)
+              : null;
+          for (const [id, tri] of persistTriangleMap.entries()) {
+            if (!existingIds.has(id)) {
+              if (developedSet) {
+                const edgeIndex = edgeIndexFromId(id);
+                if (edgeIndex != null && developedSet.has(edgeIndex)) {
+                  continue;
+                }
+              }
+              merged.push(tri);
+            }
+          }
+          stepObj.meta.formTriangles = merged;
           return stepObj;
         };
         const baseLine = [
@@ -648,6 +711,7 @@
           prevPoints: null,
           meta: {
             type: "initial",
+            stepIndex: 0,
             center: null,
             targets: [],
             axisLinks: [],
@@ -704,10 +768,11 @@
               expansionParams,
               stepIndex,
               prev.meta.polarity,
+              prev.meta.targets,
               axisState
             );
             axisState = expansion.axisState;
-            steps.push(attachFormTriangles({
+            const expansionStep = attachFormTriangles({
               points: expansion.points,
               pointPolarity: expansion.pointPolarity,
               pointAxis: expansion.pointAxis,
@@ -720,7 +785,8 @@
               construction: expansion.construction,
               prevPoints: prev.points,
               meta: expansion.meta,
-            }));
+            });
+            steps.push(expansionStep);
             stageStepCount += 1;
             const expansionCount = expansion.meta?.expansionPoints?.length ?? 0;
             if (expansionCount === 0) {
@@ -751,10 +817,11 @@
                   },
                   stepIndex,
                   prev.meta.polarity,
+                  prev.meta.targets,
                   axisState
                 );
                 axisState = forcedExpansion.axisState;
-                steps.push(attachFormTriangles({
+                const forcedStep = attachFormTriangles({
                   points: forcedExpansion.points,
                   pointPolarity: forcedExpansion.pointPolarity,
                   pointAxis: forcedExpansion.pointAxis,
@@ -767,7 +834,8 @@
                   construction: forcedExpansion.construction,
                   prevPoints: prev.points,
                   meta: forcedExpansion.meta,
-                }));
+                });
+                steps.push(forcedStep);
                 stageStepCount += 1;
               }
               break;
@@ -850,10 +918,11 @@
                   },
                   stepIndex,
                   prevFinal.meta.polarity,
+                  prevFinal.meta.targets,
                   axisState
                 );
                 axisState = finalExpansion.axisState;
-                steps.push(attachFormTriangles({
+                const finalStep = attachFormTriangles({
                   points: finalExpansion.points,
                   pointPolarity: finalExpansion.pointPolarity,
                   pointAxis: finalExpansion.pointAxis,
@@ -866,7 +935,8 @@
                   construction: finalExpansion.construction,
                   prevPoints: prevFinal.points,
                   meta: finalExpansion.meta,
-                }));
+                });
+                steps.push(finalStep);
                 stageStepCount += 1;
               }
               break;
@@ -890,6 +960,7 @@
         params,
         stepIndex,
         prevPolarity,
+        prevTargets,
         axisState
       ) {
         if (!points || points.length < 2) {
@@ -907,9 +978,11 @@
             axisState: axisState || { axes: [], segmentAxis: [] },
             meta: {
               type: "expansion",
+              stepIndex,
               center: { x: 0, y: 0 },
               expansionPoints: [],
               targets: [],
+              developedEdges: [],
               axisLinks: [],
               graph: { nodes: [], axes: snapshotAxes(axisState?.axes || []) },
               polarity: {
@@ -978,6 +1051,7 @@
         const expansionTriangles = [];
         const expansionLinks = [];
         const axisLinks = [];
+        const developedEdges = [];
         const insertedMeta = [];
 
         for (let i = 0; i < points.length - 1; i += 1) {
@@ -1036,7 +1110,8 @@
           }
           const minEdgeLength = Math.max(0, params.minEdgeLength ?? 0);
           const lengthActive = len > minEdgeLength;
-          const isActive = (activeIn[i] ?? true) && groupAllowed && edge2AdjacencyAllowed && lengthActive;
+          const isActive =
+            (activeIn[i] ?? true) && groupAllowed && edge2AdjacencyAllowed && lengthActive;
           const stopEdge = params.stopNegNeg && pol0 < 0 && pol1 < 0;
 
           if (len < 1e-9) {
@@ -1063,6 +1138,47 @@
               } else if (rightIsC && pointAxisIn[i + 1] != null) {
                 parentAxisId = pointAxisIn[i + 1];
               }
+            }
+            if (!stopEdge) {
+              const tInactive = orient === -1 ? 1 - tBase : tBase;
+              const baseEdgeInactive = { x: p0.x + dx * tInactive, y: p0.y + dy * tInactive };
+              const baseAxisInactive = projectPointToAxis(baseEdgeInactive, parentAxis);
+              const fallbackTarget = prevTargets && i < prevTargets.length ? prevTargets[i] : null;
+              if (leftRule === "C") {
+                const axisIdForLeft = pointAxisIn[i];
+                const axisForLeft = axisIdForLeft != null ? axes[axisIdForLeft] : null;
+                const target = axisForLeft?.anchor || fallbackTarget;
+                if (target) {
+                  expansionTriangles.push({
+                    a: { x: baseAxisInactive.x, y: baseAxisInactive.y },
+                    b: { x: p0.x, y: p0.y },
+                    c: { x: target.x, y: target.y },
+                    id: `xc-${stepIndex}-e${i}-L`,
+                  });
+                }
+              }
+              if (rightRule === "C") {
+                const axisIdForRight = pointAxisIn[i + 1];
+                const axisForRight = axisIdForRight != null ? axes[axisIdForRight] : null;
+                const target = axisForRight?.anchor || fallbackTarget;
+                if (target) {
+                  expansionTriangles.push({
+                    a: { x: baseAxisInactive.x, y: baseAxisInactive.y },
+                    b: { x: p1.x, y: p1.y },
+                    c: { x: target.x, y: target.y },
+                    id: `xc-${stepIndex}-e${i}-R`,
+                  });
+                }
+              }
+            }
+            const prevTarget = prevTargets && i < prevTargets.length ? prevTargets[i] : null;
+            if (prevTarget) {
+              expansionTriangles.push({
+                a: { x: prevTarget.x, y: prevTarget.y },
+                b: { x: p0.x, y: p0.y },
+                c: { x: p1.x, y: p1.y },
+                id: `hold-${stepIndex}-e${i}`,
+              });
             }
             newPoints.push(p1);
             newPolarity.push(pol1);
@@ -1107,6 +1223,33 @@
             x: baseAxis.x + perp.x * magnitude,
             y: baseAxis.y + perp.y * magnitude,
           };
+          const fallbackTarget = prevTargets && i < prevTargets.length ? prevTargets[i] : null;
+          if (leftRule === "C") {
+            const axisIdForLeft = pointAxisIn[i];
+            const axisForLeft = axisIdForLeft != null ? axes[axisIdForLeft] : null;
+            const target = axisForLeft?.anchor || fallbackTarget;
+            if (target) {
+              expansionTriangles.push({
+                a: { x: baseAxis.x, y: baseAxis.y },
+                b: { x: p0.x, y: p0.y },
+                c: { x: target.x, y: target.y },
+                id: `xc-${stepIndex}-e${i}-L`,
+              });
+            }
+          }
+          if (rightRule === "C") {
+            const axisIdForRight = pointAxisIn[i + 1];
+            const axisForRight = axisIdForRight != null ? axes[axisIdForRight] : null;
+            const target = axisForRight?.anchor || fallbackTarget;
+            if (target) {
+              expansionTriangles.push({
+                a: { x: baseAxis.x, y: baseAxis.y },
+                b: { x: p1.x, y: p1.y },
+                c: { x: target.x, y: target.y },
+                id: `xc-${stepIndex}-e${i}-R`,
+              });
+            }
+          }
           const axisAnchor = { x: baseAxis.x, y: baseAxis.y };
           const axisDir = normalizeVec(
             { x: pNew.x - axisAnchor.x, y: pNew.y - axisAnchor.y },
@@ -1129,9 +1272,10 @@
           expansionLinks.push({ a: baseAxis, b: pNew });
           targets.push(baseAxis, baseAxis);
           expansionTriangles.push(
-            { a: baseAxis, b: p0, c: pNew },
-            { a: baseAxis, b: pNew, c: p1 }
+            { a: baseAxis, b: p0, c: pNew, id: `ex-${stepIndex}-e${i}-A` },
+            { a: baseAxis, b: pNew, c: p1, id: `ex-${stepIndex}-e${i}-B` }
           );
+          developedEdges.push(i);
 
           newPoints.push(pNew);
           newPoints.push(p1);
@@ -1186,10 +1330,12 @@
           axisState: { axes, segmentAxis: newSegmentAxis },
           meta: {
             type: "expansion",
+            stepIndex,
             center,
             expansionPoints,
             targets,
             expansionTriangles,
+            developedEdges,
             axisLinks,
             graph: {
               nodes: buildNodeGraph(newPoints, newPointRule, newPointAxis, insertedMeta),
@@ -1238,6 +1384,7 @@
             axisState: axisState || { axes: [], segmentAxis: [] },
             meta: {
               type: "contraction",
+              stepIndex,
               center: center || { x: 0, y: 0 },
               targets: [],
               axisLinks: [],
@@ -1431,9 +1578,15 @@
           if (groupId === 0) {
             groupA = 1;
             groupB = 2;
+            if (halfIndex === 1) {
+              [groupA, groupB] = [groupB, groupA];
+            }
           } else if (groupId === 1) {
             groupA = 3;
             groupB = 4;
+            if (halfIndex === 1) {
+              [groupA, groupB] = [groupB, groupA];
+            }
           } else if (halfIndex != null) {
             const baseIndex = halfIndex === 0 ? 1 : 3;
             groupA = baseIndex;
@@ -1460,6 +1613,7 @@
           axisState: { axes, segmentAxis: newSegmentAxis },
           meta: {
             type: "contraction",
+            stepIndex,
             center: fallback,
             targets: nextTargets,
             axisLinks,
@@ -1475,51 +1629,6 @@
             contractionLinks,
           },
         };
-      }
-
-      function computeBounds(points) {
-        let minX = Infinity;
-        let minY = Infinity;
-        let maxX = -Infinity;
-        let maxY = -Infinity;
-
-        for (const p of points) {
-          if (!p) continue;
-          minX = Math.min(minX, p.x);
-          minY = Math.min(minY, p.y);
-          maxX = Math.max(maxX, p.x);
-          maxY = Math.max(maxY, p.y);
-        }
-
-        return { minX, minY, maxX, maxY };
-      }
-
-      function fitToCanvas(points, width, height, padding, symmetric = false) {
-        let { minX, minY, maxX, maxY } = computeBounds(points);
-
-        if (!Number.isFinite(minX)) {
-          minX = -1;
-          minY = -1;
-          maxX = 1;
-          maxY = 1;
-        }
-
-        if (symmetric) {
-          const maxAbsX = Math.max(Math.abs(minX), Math.abs(maxX), 1e-6);
-          const maxAbsY = Math.max(Math.abs(minY), Math.abs(maxY), 1e-6);
-          minX = -maxAbsX;
-          maxX = maxAbsX;
-          minY = -maxAbsY;
-          maxY = maxAbsY;
-        }
-
-        const dx = Math.max(1e-6, maxX - minX);
-        const dy = Math.max(1e-6, maxY - minY);
-        const scale = Math.min((width - padding * 2) / dx, (height - padding * 2) / dy);
-        const cx = (minX + maxX) / 2;
-        const cy = (minY + maxY) / 2;
-
-        return { scale, cx, cy, width, height };
       }
 
       function fixedAxisTransform(width, height, padding) {
@@ -1578,8 +1687,14 @@
         ctx.beginPath();
         for (const tri of triangles) {
           const a = mirrorAll ? mirrorPoint(tri.a) : tri.a;
-          const b = mirrorAll ? mirrorPoint(tri.b) : tri.b;
-          const c = mirrorAll ? mirrorPoint(tri.c) : tri.c;
+          let b = mirrorAll ? mirrorPoint(tri.b) : tri.b;
+          let c = mirrorAll ? mirrorPoint(tri.c) : tri.c;
+          const area2 = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+          if (area2 < 0) {
+            const tmp = b;
+            b = c;
+            c = tmp;
+          }
           const pa = worldToCanvas(a, transform);
           const pb = worldToCanvas(b, transform);
           const pc = worldToCanvas(c, transform);
@@ -1588,6 +1703,13 @@
           ctx.lineTo(pc.x, pc.y);
           ctx.closePath();
         }
+      }
+
+      function triangleCentroid(tri) {
+        return {
+          x: (tri.a.x + tri.b.x + tri.c.x) / 3,
+          y: (tri.a.y + tri.b.y + tri.c.y) / 3,
+        };
       }
 
       function fillFormTriangles(ctx, triangles, transform, mirrorAll = false) {
@@ -1600,8 +1722,11 @@
         ctx.stroke();
       }
 
-      function drawFormLayer(ctx, step, points, transform, style, edgesOnly = false) {
-        const currentTriangles = buildFormTriangles(points, step?.meta?.targets);
+      function drawFormLayer(ctx, step, points, transform, style, edgesOnly = false, showIds = false) {
+        const stepTag = step?.meta?.stepIndex != null ? String(step.meta.stepIndex) : "x";
+        const typeTag = step?.meta?.type ? step.meta.type[0] : "f";
+        const formPrefix = `${typeTag}${stepTag}`;
+        const currentTriangles = buildFormTriangles(points, step?.meta?.targets, formPrefix);
         const formTriangles = step?.meta?.formTriangles;
         const fillTriangles = formTriangles && formTriangles.length ? formTriangles : currentTriangles;
         const strokeTriangles = fillTriangles;
@@ -1632,6 +1757,20 @@
             strokeFormTriangles(ctx, strokeTriangles, transform, false);
           }
         }
+
+        if (showIds) {
+          ctx.fillStyle = "rgba(10, 10, 10, 0.8)";
+          ctx.font = "10px Trebuchet MS, Segoe UI, Tahoma, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          for (const tri of fillTriangles) {
+            const id = tri.id != null ? String(tri.id) : "";
+            if (!id) continue;
+            const centroid = triangleCentroid(tri);
+            const c = worldToCanvas(centroid, transform);
+            ctx.fillText(id, c.x, c.y);
+          }
+        }
       }
 
       function drawStepToContext(ctx, step, params, size, padding, isExport = false) {
@@ -1643,6 +1782,7 @@
         if (!points || points.length < 2) return;
 
         const transform = fixedAxisTransform(size, size, padding);
+        const formOpacity = clamp(params.showFormOpacity ?? 0.35, 0.2, 1);
         const style = isExport
           ? {
               mainStroke: "rgb(0, 0, 0)",
@@ -1655,7 +1795,7 @@
               mainWidth: 2.2,
               prevWidth: 1.2,
               constructionWidth: 1.0,
-              formFill: "rgba(0, 0, 0, 0.35)",
+              formFill: `rgba(0, 0, 0, ${formOpacity})`,
               axisStroke: "rgba(0, 0, 0, 0.2)",
               axisWidth: 1.1,
               baseRadius: 3.2,
@@ -1673,7 +1813,7 @@
               mainWidth: 1.2,
               prevWidth: 0.8,
               constructionWidth: 0.9,
-              formFill: "rgba(0, 0, 0, 0.35)",
+              formFill: `rgba(0, 0, 0, ${formOpacity})`,
               axisStroke: "rgba(0, 0, 0, 0.2)",
               axisWidth: 0.9,
               baseRadius: 2.4,
@@ -1710,7 +1850,7 @@
           }
         }
 
-        if (step.prevPoints && step.prevPoints.length >= 2) {
+        if (params.showConstructionLines && step.prevPoints && step.prevPoints.length >= 2) {
           ctx.strokeStyle = style.prevStroke;
           ctx.lineWidth = style.prevWidth;
           const prevSets = SYMMETRIC_DISPLAY
@@ -1723,7 +1863,7 @@
         }
 
         if (params.showForm && step.meta) {
-          drawFormLayer(ctx, step, points, transform, style, false);
+          drawFormLayer(ctx, step, points, transform, style, false, params.showTriangleIds);
           return;
         }
 
@@ -1884,7 +2024,7 @@
 
       function renderSteps(stepPolylines, params) {
         ui.tiles.innerHTML = "";
-        const startIndex = stepPolylines.length > 1 ? 1 : 0;
+        const startIndex = stepPolylines.length > 2 ? 2 : 0;
         stepPolylines.slice(startIndex).forEach((step, offset) => {
           const index = startIndex + offset;
           const tile = document.createElement("div");
@@ -1893,7 +2033,9 @@
           const canvas = document.createElement("canvas");
           const label = document.createElement("div");
           label.className = "label";
-          label.textContent = `Step ${index}`;
+          const typeTag =
+            step.meta?.type === "contraction" ? "C" : step.meta?.type === "expansion" ? "E" : "S";
+          label.textContent = `${offset + 1}${typeTag}`;
 
           tile.appendChild(canvas);
           tile.appendChild(label);
@@ -1925,14 +2067,7 @@
       function update() {
         const params = readParams();
         updateReadouts(params);
-        let estimate = lastStepCount || 20;
-        let steps = [];
-        for (let i = 0; i < 3; i += 1) {
-          steps = generateSteps(params, estimate);
-          if (steps.length === estimate) break;
-          estimate = steps.length;
-        }
-        lastStepCount = steps.length;
+        const steps = generateSteps(params);
         renderSteps(steps, params);
         renderFinalStep(steps, params);
       }
