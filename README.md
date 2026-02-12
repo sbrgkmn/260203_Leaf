@@ -2,7 +2,7 @@
 
 Recursive leaf-form generator built in a single `index.html` canvas app.
 
-<img width="1115" height="875" alt="Screenshot 2026-02-12 at 13 25 23" src="https://github.com/user-attachments/assets/00c1be43-fe76-4226-801a-f880561f7755" />
+<img width="832" height="657" alt="Screenshot 2026-02-12 at 13 30 02" src="https://github.com/user-attachments/assets/f57febb0-5f1b-4b7f-9822-284239feb4dc" />
 
 ## Live Demo
 https://sbrgkmn.github.io/260203_Leaf/
