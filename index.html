@@ -393,6 +393,7 @@
       const EXPORT_SIZE = 640;
       const EXPORT_PADDING = 40;
       const BASE_AXIS_LENGTH = 1;
+      const INITIAL_BASE_SPACING_RATIO = 0.05;
       const SYMMETRIC_DISPLAY = true;
 
       const ui = {
@@ -504,33 +505,128 @@
         return x - Math.floor(x);
       }
 
-      function selectPersistTriangles(triangles) {
+      function isFinitePoint(p) {
+        return !!p && Number.isFinite(p.x) && Number.isFinite(p.y);
+      }
+
+      function triangleArea2(a, b, c) {
+        return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+      }
+
+      function pushTriangleIfValid(triangles, tri, eps = 1e-10) {
+        if (!tri || !isFinitePoint(tri.a) || !isFinitePoint(tri.b) || !isFinitePoint(tri.c)) return;
+        if (Math.abs(triangleArea2(tri.a, tri.b, tri.c)) <= eps) return;
+        triangles.push(tri);
+      }
+
+      function sanitizeTriangles(triangles) {
         if (!triangles || triangles.length === 0) return [];
-        return triangles.filter((tri) => {
-          const id = tri && tri.id ? String(tri.id).toLowerCase() : "";
-          return id.startsWith("xc-") || id.startsWith("hold-");
-        });
+        const out = [];
+        for (const tri of triangles) {
+          pushTriangleIfValid(out, tri);
+        }
+        return out;
       }
 
-      function edgeIndexFromId(id) {
-        if (!id) return null;
-        const match = String(id).match(/-e(\d+)/i);
-        if (!match) return null;
-        const value = Number.parseInt(match[1], 10);
-        return Number.isFinite(value) ? value : null;
+      function clonePoint(p) {
+        return { x: p.x, y: p.y };
       }
 
-      function buildFormTriangles(points, targets, idPrefix = "f") {
-        if (!points || points.length < 2 || !targets || targets.length !== points.length - 1) {
-          return [];
+      function axisAnchor(axes, axisId) {
+        if (axisId == null) return null;
+        const axis = axes && axes[axisId] ? axes[axisId] : null;
+        return axis && isFinitePoint(axis.anchor) ? axis.anchor : null;
+      }
+
+      function resolveFormBaseTarget(i, pointRule, pointAxis, segmentAxis, axes, eps = 1e-10) {
+        const leftRule = pointRule && pointRule[i] ? pointRule[i] : "carry";
+        const rightRule = pointRule && pointRule[i + 1] ? pointRule[i + 1] : "carry";
+        const leftAnchor = axisAnchor(axes, pointAxis ? pointAxis[i] : null);
+        const rightAnchor = axisAnchor(axes, pointAxis ? pointAxis[i + 1] : null);
+        const segmentAnchor = axisAnchor(axes, segmentAxis ? segmentAxis[i] : null);
+
+        if (leftRule === "E" && leftAnchor) return leftAnchor;
+        if (rightRule === "E" && rightAnchor) return rightAnchor;
+
+        if (leftRule === "C" && rightRule !== "C" && leftAnchor) return leftAnchor;
+        if (rightRule === "C" && leftRule !== "C" && rightAnchor) return rightAnchor;
+        if (leftRule === "C" && rightRule === "C") {
+          if (leftAnchor && rightAnchor) {
+            const d = Math.hypot(leftAnchor.x - rightAnchor.x, leftAnchor.y - rightAnchor.y);
+            if (d <= eps) return leftAnchor;
+          }
+          return segmentAnchor || leftAnchor || rightAnchor || null;
         }
-        const tris = [];
-        for (let i = 0; i < points.length - 1; i += 1) {
-          const center = targets[i];
-          if (!center) continue;
-          tris.push({ a: center, b: points[i], c: points[i + 1], id: `${idPrefix}-${i}` });
+
+        return segmentAnchor || leftAnchor || rightAnchor || null;
+      }
+
+      function buildShowFormTriangles(step) {
+        const points = step && step.points ? step.points : null;
+        if (!points || points.length < 2) return [];
+        const pointRule = step.pointRule || [];
+        const pointAxis = step.pointAxis || [];
+        const segmentAxis = step.segmentAxis || [];
+        const axes = step.meta?.graph?.axes || [];
+        const stepTag = step.meta?.stepIndex != null ? String(step.meta.stepIndex) : "x";
+        const typeTag = step.meta?.type ? step.meta.type[0] : "f";
+        const triangles = [];
+        const edgeCount = points.length - 1;
+
+        for (let i = 0; i < edgeCount; i += 1) {
+          const p0 = points[i];
+          const p1 = points[i + 1];
+          const base = resolveFormBaseTarget(i, pointRule, pointAxis, segmentAxis, axes);
+          if (!isFinitePoint(p0) || !isFinitePoint(p1) || !isFinitePoint(base)) {
+            continue;
+          }
+
+          pushTriangleIfValid(triangles, {
+            a: clonePoint(base),
+            b: clonePoint(p0),
+            c: clonePoint(p1),
+            id: `${typeTag}${stepTag}-e${i}`,
+          });
+
+          const leftRule = pointRule && pointRule[i] ? pointRule[i] : "carry";
+          if (leftRule === "C") {
+            const cTarget = axisAnchor(axes, pointAxis[i]);
+            if (isFinitePoint(cTarget)) {
+              pushTriangleIfValid(triangles, {
+                a: clonePoint(base),
+                b: clonePoint(p0),
+                c: clonePoint(cTarget),
+                id: `${typeTag}${stepTag}-xc${i}L`,
+              });
+            }
+          }
+
+          const rightRule = pointRule && pointRule[i + 1] ? pointRule[i + 1] : "carry";
+          if (rightRule === "C") {
+            const cTarget = axisAnchor(axes, pointAxis[i + 1]);
+            if (isFinitePoint(cTarget)) {
+              pushTriangleIfValid(triangles, {
+                a: clonePoint(base),
+                b: clonePoint(p1),
+                c: clonePoint(cTarget),
+                id: `${typeTag}${stepTag}-xc${i}R`,
+              });
+            }
+          }
         }
-        return tris;
+
+        return sanitizeTriangles(triangles);
+      }
+
+      function pointStateForIndex(pointIndex, pointRule, pointAxis, axes) {
+        const rule = pointRule && pointRule[pointIndex] ? pointRule[pointIndex] : "carry";
+        const axisId = pointAxis && pointAxis[pointIndex] != null ? pointAxis[pointIndex] : null;
+        const axis = axisId != null ? axes[axisId] : null;
+        return {
+          rule,
+          axisId,
+          target: axis && axis.anchor ? axis.anchor : null,
+        };
       }
 
       function snapshotAxes(axes) {
@@ -632,63 +728,32 @@
 
       function generateSteps(params) {
         const steps = [];
-        const persistTriangleMap = new Map();
         const attachFormTriangles = (stepObj) => {
           if (!stepObj || !stepObj.meta) return stepObj;
-          const stepTag =
-            stepObj.meta.stepIndex != null ? String(stepObj.meta.stepIndex) : "x";
-          const typeTag = stepObj.meta.type ? stepObj.meta.type[0] : "f";
-          const formPrefix = `${typeTag}${stepTag}`;
-          const currentTriangles =
-            stepObj.meta.type === "expansion" && stepObj.meta.expansionTriangles?.length
-              ? stepObj.meta.expansionTriangles
-              : buildFormTriangles(stepObj.points, stepObj.meta.targets, formPrefix);
-          const persistMatches =
-            stepObj.meta.type === "expansion" ? selectPersistTriangles(currentTriangles) : [];
-          if (persistMatches.length) {
-            persistMatches.forEach((tri) => {
-              if (tri && tri.id) persistTriangleMap.set(String(tri.id), tri);
-            });
-          }
-          const existingIds = new Set(
-            currentTriangles.map((tri) => (tri && tri.id ? String(tri.id) : "")).filter(Boolean)
-          );
-          const merged = currentTriangles.slice();
-          const developedSet =
-            stepObj.meta.type === "expansion" && Array.isArray(stepObj.meta.developedEdges)
-              ? new Set(stepObj.meta.developedEdges)
-              : null;
-          for (const [id, tri] of persistTriangleMap.entries()) {
-            if (!existingIds.has(id)) {
-              if (developedSet) {
-                const edgeIndex = edgeIndexFromId(id);
-                if (edgeIndex != null && developedSet.has(edgeIndex)) {
-                  continue;
-                }
-              }
-              merged.push(tri);
-            }
-          }
-          stepObj.meta.formTriangles = merged;
+          stepObj.meta.formTriangles = buildShowFormTriangles(stepObj);
           return stepObj;
         };
+        const axisHalfLength = BASE_AXIS_LENGTH * 0.5;
+        const seedBaseHalfOffset = (BASE_AXIS_LENGTH * INITIAL_BASE_SPACING_RATIO) * 0.5;
         const baseLine = [
-          { x: 0, y: -0.5 },
-          { x: 0, y: 0.5 },
+          { x: seedBaseHalfOffset, y: -axisHalfLength },
+          { x: 0, y: axisHalfLength },
         ];
         const maxAutoSteps = params.enableExpansionStage ? 480 : 240;
         const maxStageSteps = 120;
+        const rootAxisAnchor = { x: 0, y: -axisHalfLength };
+        const rootAxisTip = { x: 0, y: axisHalfLength };
         const rootAxisDir = normalizeVec({
-          x: baseLine[1].x - baseLine[0].x,
-          y: baseLine[1].y - baseLine[0].y,
+          x: rootAxisTip.x - rootAxisAnchor.x,
+          y: rootAxisTip.y - rootAxisAnchor.y,
         });
         let axisState = {
           axes: [
             {
               id: 0,
               parent: null,
-              anchor: { x: baseLine[0].x, y: baseLine[0].y },
-              tip: { x: baseLine[1].x, y: baseLine[1].y },
+              anchor: rootAxisAnchor,
+              tip: rootAxisTip,
               dir: rootAxisDir,
             },
           ],
@@ -714,6 +779,7 @@
             stepIndex: 0,
             center: null,
             targets: [],
+            formTargets: [],
             axisLinks: [],
             polarity: { pos: [{ ...baseLine[1] }], neg: [{ ...baseLine[0] }], posLinks: [] },
             graph: { nodes: initialNodes, axes: snapshotAxes(axisState.axes) },
@@ -769,7 +835,8 @@
               stepIndex,
               prev.meta.polarity,
               prev.meta.targets,
-              axisState
+              axisState,
+              prev.meta.formTargets || prev.meta.targets
             );
             axisState = expansion.axisState;
             const expansionStep = attachFormTriangles({
@@ -818,7 +885,8 @@
                   stepIndex,
                   prev.meta.polarity,
                   prev.meta.targets,
-                  axisState
+                  axisState,
+                  prev.meta.formTargets || prev.meta.targets
                 );
                 axisState = forcedExpansion.axisState;
                 const forcedStep = attachFormTriangles({
@@ -877,7 +945,8 @@
               prevAfterExpansion.meta.targets,
               prevAfterExpansion.meta.center,
               prevAfterExpansion.meta.polarity,
-              axisState
+              axisState,
+              prevAfterExpansion.meta.formTargets || prevAfterExpansion.meta.targets
             );
             axisState = contraction.axisState;
             steps.push(attachFormTriangles({
@@ -919,7 +988,8 @@
                   stepIndex,
                   prevFinal.meta.polarity,
                   prevFinal.meta.targets,
-                  axisState
+                  axisState,
+                  prevFinal.meta.formTargets || prevFinal.meta.targets
                 );
                 axisState = finalExpansion.axisState;
                 const finalStep = attachFormTriangles({
@@ -961,7 +1031,8 @@
         stepIndex,
         prevPolarity,
         prevTargets,
-        axisState
+        axisState,
+        prevFormTargets
       ) {
         if (!points || points.length < 2) {
           return {
@@ -982,6 +1053,7 @@
               center: { x: 0, y: 0 },
               expansionPoints: [],
               targets: [],
+              formTargets: [],
               developedEdges: [],
               axisLinks: [],
               graph: { nodes: [], axes: snapshotAxes(axisState?.axes || []) },
@@ -1048,6 +1120,7 @@
         const construction = { bases: [], links: [], inserted: [] };
         const expansionPoints = [];
         const targets = [];
+        const formTargets = [];
         const expansionTriangles = [];
         const expansionLinks = [];
         const axisLinks = [];
@@ -1072,6 +1145,8 @@
           }
           const leftRule = pointRuleIn[i];
           const rightRule = pointRuleIn[i + 1];
+          const leftState = pointStateForIndex(i, pointRuleIn, pointAxisIn, axes);
+          const rightState = pointStateForIndex(i + 1, pointRuleIn, pointAxisIn, axes);
           if (leftRule === "E" && rightRule !== "E") {
             parentAxisId = pointAxisIn[i];
           } else if (rightRule === "E" && leftRule !== "E") {
@@ -1115,6 +1190,8 @@
           const stopEdge = params.stopNegNeg && pol0 < 0 && pol1 < 0;
 
           if (len < 1e-9) {
+            const prevFormTarget =
+              prevFormTargets && i < prevFormTargets.length ? prevFormTargets[i] : null;
             newPoints.push({ x: p0.x, y: p0.y });
             newPoints.push({ x: p1.x, y: p1.y });
             newPolarity.push(pol0, pol1);
@@ -1126,51 +1203,42 @@
             newSegmentGroup.push(groupId, groupId);
             newSegmentAxis.push(parentAxisId, parentAxisId);
             targets.push(null, null);
+            formTargets.push(prevFormTarget, prevFormTarget);
             continue;
           }
 
           if (!isActive || stopEdge) {
             if (stopEdge) {
-              const leftIsC = pointRuleIn[i] === "C";
-              const rightIsC = pointRuleIn[i + 1] === "C";
-              if (leftIsC && pointAxisIn[i] != null) {
-                parentAxisId = pointAxisIn[i];
-              } else if (rightIsC && pointAxisIn[i + 1] != null) {
-                parentAxisId = pointAxisIn[i + 1];
+              const leftIsC = leftState.rule === "C";
+              const rightIsC = rightState.rule === "C";
+              if (leftIsC && leftState.axisId != null) {
+                parentAxisId = leftState.axisId;
+              } else if (rightIsC && rightState.axisId != null) {
+                parentAxisId = rightState.axisId;
               }
             }
-            if (!stopEdge) {
-              const tInactive = orient === -1 ? 1 - tBase : tBase;
-              const baseEdgeInactive = { x: p0.x + dx * tInactive, y: p0.y + dy * tInactive };
-              const baseAxisInactive = projectPointToAxis(baseEdgeInactive, parentAxis);
-              const fallbackTarget = prevTargets && i < prevTargets.length ? prevTargets[i] : null;
-              if (leftRule === "C") {
-                const axisIdForLeft = pointAxisIn[i];
-                const axisForLeft = axisIdForLeft != null ? axes[axisIdForLeft] : null;
-                const target = axisForLeft?.anchor || fallbackTarget;
-                if (target) {
-                  expansionTriangles.push({
-                    a: { x: baseAxisInactive.x, y: baseAxisInactive.y },
-                    b: { x: p0.x, y: p0.y },
-                    c: { x: target.x, y: target.y },
-                    id: `xc-${stepIndex}-e${i}-L`,
-                  });
-                }
-              }
-              if (rightRule === "C") {
-                const axisIdForRight = pointAxisIn[i + 1];
-                const axisForRight = axisIdForRight != null ? axes[axisIdForRight] : null;
-                const target = axisForRight?.anchor || fallbackTarget;
-                if (target) {
-                  expansionTriangles.push({
-                    a: { x: baseAxisInactive.x, y: baseAxisInactive.y },
-                    b: { x: p1.x, y: p1.y },
-                    c: { x: target.x, y: target.y },
-                    id: `xc-${stepIndex}-e${i}-R`,
-                  });
-                }
-              }
+            const inactiveAxis = axes[parentAxisId] || parentAxis;
+            const tInactive = orient === -1 ? 1 - tBase : tBase;
+            const baseEdgeInactive = { x: p0.x + dx * tInactive, y: p0.y + dy * tInactive };
+            const baseAxisInactive = projectPointToAxis(baseEdgeInactive, inactiveAxis);
+            if (leftState.rule === "C" && leftState.target) {
+              pushTriangleIfValid(expansionTriangles, {
+                a: { x: baseAxisInactive.x, y: baseAxisInactive.y },
+                b: { x: p0.x, y: p0.y },
+                c: { x: leftState.target.x, y: leftState.target.y },
+                id: `xc-${stepIndex}-e${i}-L`,
+              });
             }
+            if (rightState.rule === "C" && rightState.target) {
+              pushTriangleIfValid(expansionTriangles, {
+                a: { x: baseAxisInactive.x, y: baseAxisInactive.y },
+                b: { x: p1.x, y: p1.y },
+                c: { x: rightState.target.x, y: rightState.target.y },
+                id: `xc-${stepIndex}-e${i}-R`,
+              });
+            }
+            const prevFormTarget =
+              prevFormTargets && i < prevFormTargets.length ? prevFormTargets[i] : null;
             const prevTarget = prevTargets && i < prevTargets.length ? prevTargets[i] : null;
             if (prevTarget) {
               expansionTriangles.push({
@@ -1190,6 +1258,7 @@
             newSegmentGroup.push(groupId);
             newSegmentAxis.push(parentAxisId);
             targets.push(null);
+            formTargets.push(prevFormTarget);
             continue;
           }
 
@@ -1223,32 +1292,21 @@
             x: baseAxis.x + perp.x * magnitude,
             y: baseAxis.y + perp.y * magnitude,
           };
-          const fallbackTarget = prevTargets && i < prevTargets.length ? prevTargets[i] : null;
-          if (leftRule === "C") {
-            const axisIdForLeft = pointAxisIn[i];
-            const axisForLeft = axisIdForLeft != null ? axes[axisIdForLeft] : null;
-            const target = axisForLeft?.anchor || fallbackTarget;
-            if (target) {
-              expansionTriangles.push({
-                a: { x: baseAxis.x, y: baseAxis.y },
-                b: { x: p0.x, y: p0.y },
-                c: { x: target.x, y: target.y },
-                id: `xc-${stepIndex}-e${i}-L`,
-              });
-            }
+          if (leftState.rule === "C" && leftState.target) {
+            pushTriangleIfValid(expansionTriangles, {
+              a: { x: baseAxis.x, y: baseAxis.y },
+              b: { x: p0.x, y: p0.y },
+              c: { x: leftState.target.x, y: leftState.target.y },
+              id: `xc-${stepIndex}-e${i}-L`,
+            });
           }
-          if (rightRule === "C") {
-            const axisIdForRight = pointAxisIn[i + 1];
-            const axisForRight = axisIdForRight != null ? axes[axisIdForRight] : null;
-            const target = axisForRight?.anchor || fallbackTarget;
-            if (target) {
-              expansionTriangles.push({
-                a: { x: baseAxis.x, y: baseAxis.y },
-                b: { x: p1.x, y: p1.y },
-                c: { x: target.x, y: target.y },
-                id: `xc-${stepIndex}-e${i}-R`,
-              });
-            }
+          if (rightState.rule === "C" && rightState.target) {
+            pushTriangleIfValid(expansionTriangles, {
+              a: { x: baseAxis.x, y: baseAxis.y },
+              b: { x: p1.x, y: p1.y },
+              c: { x: rightState.target.x, y: rightState.target.y },
+              id: `xc-${stepIndex}-e${i}-R`,
+            });
           }
           const axisAnchor = { x: baseAxis.x, y: baseAxis.y };
           const axisDir = normalizeVec(
@@ -1271,6 +1329,7 @@
           expansionPoints.push(pNew);
           expansionLinks.push({ a: baseAxis, b: pNew });
           targets.push(baseAxis, baseAxis);
+          formTargets.push(baseAxis, baseAxis);
           expansionTriangles.push(
             { a: baseAxis, b: p0, c: pNew, id: `ex-${stepIndex}-e${i}-A` },
             { a: baseAxis, b: pNew, c: p1, id: `ex-${stepIndex}-e${i}-B` }
@@ -1334,6 +1393,7 @@
             center,
             expansionPoints,
             targets,
+            formTargets,
             expansionTriangles,
             developedEdges,
             axisLinks,
@@ -1367,7 +1427,8 @@
         targets,
         center,
         prevPolarity,
-        axisState
+        axisState,
+        formTargetsIn
       ) {
         if (!points || points.length < 2) {
           return {
@@ -1387,6 +1448,7 @@
               stepIndex,
               center: center || { x: 0, y: 0 },
               targets: [],
+              formTargets: [],
               axisLinks: [],
               graph: { nodes: [], axes: snapshotAxes(axisState?.axes || []) },
               polarity: {
@@ -1449,6 +1511,7 @@
         const contractionPoints = [];
         const contractionLinks = [];
         const nextTargets = [];
+        const nextFormTargets = [];
         const axisLinks = [];
         const insertedMeta = [];
 
@@ -1494,6 +1557,8 @@
           const isActive = activeIn[i] ?? true;
           const rawTarget = targets && i < targets.length ? targets[i] : undefined;
           const target = rawTarget === undefined ? fallback : rawTarget;
+          const rawFormTarget = formTargetsIn && i < formTargetsIn.length ? formTargetsIn[i] : rawTarget;
+          const formTarget = rawFormTarget === undefined ? fallback : rawFormTarget;
 
           if (len < 1e-9) {
             newPoints.push({ x: p0.x, y: p0.y });
@@ -1507,6 +1572,7 @@
             newSegmentGroup.push(groupId, groupId);
             newSegmentAxis.push(parentAxisId, parentAxisId);
             nextTargets.push(target, target);
+            nextFormTargets.push(formTarget, formTarget);
             continue;
           }
 
@@ -1521,6 +1587,7 @@
             newSegmentGroup.push(groupId);
             newSegmentAxis.push(parentAxisId);
             nextTargets.push(target);
+            nextFormTargets.push(formTarget);
             continue;
           }
 
@@ -1595,6 +1662,7 @@
           newSegmentGroup.push(groupA, groupB);
           newSegmentAxis.push(axisId, axisId);
           nextTargets.push(target, target);
+          nextFormTargets.push(formTarget, formTarget);
           newPointAxis.push(pointAxisIn[i + 1] ?? parentAxisId);
           newPointRule.push(pointRuleIn[i + 1] ?? "carry");
         }
@@ -1616,6 +1684,7 @@
             stepIndex,
             center: fallback,
             targets: nextTargets,
+            formTargets: nextFormTargets,
             axisLinks,
             graph: {
               nodes: buildNodeGraph(newPoints, newPointRule, newPointAxis, insertedMeta),
@@ -1686,10 +1755,14 @@
         if (!triangles || triangles.length === 0) return;
         ctx.beginPath();
         for (const tri of triangles) {
+          if (!tri || !isFinitePoint(tri.a) || !isFinitePoint(tri.b) || !isFinitePoint(tri.c)) {
+            continue;
+          }
           const a = mirrorAll ? mirrorPoint(tri.a) : tri.a;
           let b = mirrorAll ? mirrorPoint(tri.b) : tri.b;
           let c = mirrorAll ? mirrorPoint(tri.c) : tri.c;
-          const area2 = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+          const area2 = triangleArea2(a, b, c);
+          if (Math.abs(area2) <= 1e-10) continue;
           if (area2 < 0) {
             const tmp = b;
             b = c;
@@ -1723,12 +1796,9 @@
       }
 
       function drawFormLayer(ctx, step, points, transform, style, edgesOnly = false, showIds = false) {
-        const stepTag = step?.meta?.stepIndex != null ? String(step.meta.stepIndex) : "x";
-        const typeTag = step?.meta?.type ? step.meta.type[0] : "f";
-        const formPrefix = `${typeTag}${stepTag}`;
-        const currentTriangles = buildFormTriangles(points, step?.meta?.targets, formPrefix);
         const formTriangles = step?.meta?.formTriangles;
-        const fillTriangles = formTriangles && formTriangles.length ? formTriangles : currentTriangles;
+        const fillTriangles =
+          formTriangles && formTriangles.length ? formTriangles : buildShowFormTriangles(step);
         const strokeTriangles = fillTriangles;
         if (!fillTriangles || fillTriangles.length === 0) return;
         const outlineStroke = "rgba(0, 0, 0, 0.5)";
