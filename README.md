@@ -1,89 +1,48 @@
 # 260203_Leaf
 
-A single-file HTML5 Canvas app for recursive leaf-like construction using alternating Expansion (E) and Contraction (C) rules, with staged control and axis-aware geometry metadata.
+Recursive leaf-form generator built in a single `index.html` canvas app.
 
-## Latest Version (Default)
-This repository now uses the staged pipeline version as the default code version:
-- Stage 1: Contraction Stage (patterned development: all, edge2, or edge4)
-- Stage 2: Expansion Stage (optional, runs on all active edges when enabled)
+## Live Demo
+https://sbrgkmn.github.io/260203_Leaf/
 
-## Core Behavior
-- Recursion is generated automatically from min-edge thresholds, not a fixed slider step count.
-- Stage 1 always terminates on a contraction step.
-- Stage 2 (if enabled) continues from Stage 1 output and terminates on an expansion step.
-- Neg-neg edge stopping is available and enabled by default in typical runs.
-- Edge ID/group redistribution is preserved through EC cycles for patterned development.
-
-## Data and Axis Structure
-- Points carry:
-  - polarity (+, -, or carry)
-  - rule lineage (E, C, seed, carry)
-  - axis assignment (pointAxis)
-- Segments carry:
-  - activity state
-  - polarity side
-  - orientation
-  - group ID (used for edge2/edge4 patterned filtering)
-  - axis ownership
-- Axis graph metadata is tracked in meta.graph and axisState to keep child axis links attached to parent axis construction.
-
-## Show Form (Current Implementation)
-- Show Form is a dedicated visualization mode.
-- It draws filled triangulation plus triangle edges, and hides other overlays/lines while active.
-- Expansion uses explicit local triangles per expanded edge:
-  - triangle 1: (axisOrigin, p0, pNew)
-  - triangle 2: (axisOrigin, pNew, p1)
-- Contraction keeps target-linked triangulation carried through steps for interior form continuity.
-
-## Smoothing
-- Boundary display supports quadratic 3-point smoothing (Smoothing slider).
-- Smoothing is display-only and does not change recursive geometry generation.
-
-## Layout
-- Left side: step tiles (400x400, six per row).
-- Right side:
-  - final-step preview at top
-  - controls stacked below
+## Project Overview
+- Generates staged EC (Expansion/Contraction) development on a symmetric leaf axis.
+- Uses axis-aware point/segment state for recursive construction.
+- Includes filled `showForm` triangulation to visualize emerging form.
+- Exports step snapshots as PNG.
 
 ## Controls
 ### Contraction Stage
-- Development mode: all, edge2, edge4
+- Development mode (`all`, `edge2`, `edge4`)
 - Position
 - Intensity
-- Angle (0..90)
+- Angle
 - Contract Position
 - Contract Intensity
-- Min Edge Length (>= 0.1)
+- Min Edge Length
 
 ### Expansion Stage
-- Enable Expansion Stage (checkbox)
+- Apply Expansion Stage
 - Position
 - Intensity
-- Angle (0..90)
+- Angle
 - Contract Position
 - Contract Intensity
-- Min Edge Length (>= 0.1)
+- Min Edge Length
 
 ### Display and Utility
 - Show Form
-- Show Axis
-- Show Edge IDs
-- Show Construction Points
+- Form Opacity
 - Show Construction Lines
 - Show Polarity Points
-- Stop Neg-Neg Edges
 - Jitter / Jitter Amount
 - Smoothing
 - Export PNG Steps
 
-## Getting Started
-1. Start a local server in this folder:
-   - py -m http.server 8000
-2. Open http://localhost:8000/ in your browser.
+## Local Run
+1. `cd /Users/sabrigokmen/Desktop/vibecoding/260203_Leaf`
+2. `python3 -m http.server 8000`
+3. Open `http://localhost:8000/`
 
-## GitHub Pages
-- This repo includes `.github/workflows/deploy-pages.yml` to deploy `index.html` on every push to `main`.
-- Expected site URL: `https://sbrgkmn.github.io/260203_Leaf/`
-- One-time repo setting:
-  - GitHub -> `Settings` -> `Pages` -> `Build and deployment` -> `Source: GitHub Actions`
-- If the repo is private, GitHub Pages may require a paid plan. Public repo is the simplest setup.
+## Deployment
+- GitHub Pages deploys automatically from `main` via `.github/workflows/deploy-pages.yml`.

@@ -288,13 +288,6 @@
           <div class="panel-title">Display</div>
 
           <label class="control">
-            <span>Show Construction Points</span>
-            <div class="control-row">
-              <input id="showConstructionPoints" type="checkbox" />
-            </div>
-          </label>
-
-          <label class="control">
             <span>Show Form</span>
             <div class="control-row">
               <input id="showForm" type="checkbox" />
@@ -316,39 +309,11 @@
             </div>
           </label>
 
-          <label class="control">
-            <span>Show Axis</span>
-            <div class="control-row">
-              <input id="showAxis" type="checkbox" />
-            </div>
-          </label>
-
-          <label class="control">
-            <span>Show Edge IDs</span>
-            <div class="control-row">
-              <input id="showEdgeIds" type="checkbox" />
-            </div>
-          </label>
-
-          <label class="control">
-            <span>Show Triangle IDs</span>
-            <div class="control-row">
-              <input id="showTriangleIds" type="checkbox" />
-            </div>
-          </label>
-
 
           <label class="control">
             <span>Show Polarity Points</span>
             <div class="control-row">
               <input id="showPolarityPoints" type="checkbox" />
-            </div>
-          </label>
-
-          <label class="control">
-            <span>Stop Neg-Neg Edges</span>
-            <div class="control-row">
-              <input id="stopNegNeg" type="checkbox" checked />
             </div>
           </label>
 
@@ -423,16 +388,11 @@
         expansionIntensityBVal: document.getElementById("expansionIntensityBVal"),
         expansionMinEdgeLength: document.getElementById("expansionMinEdgeLength"),
         expansionMinEdgeLengthVal: document.getElementById("expansionMinEdgeLengthVal"),
-        showConstructionPoints: document.getElementById("showConstructionPoints"),
         showForm: document.getElementById("showForm"),
         showFormOpacity: document.getElementById("showFormOpacity"),
         showFormOpacityVal: document.getElementById("showFormOpacityVal"),
         showConstructionLines: document.getElementById("showConstructionLines"),
-        showAxis: document.getElementById("showAxis"),
-        showEdgeIds: document.getElementById("showEdgeIds"),
-        showTriangleIds: document.getElementById("showTriangleIds"),
         showPolarityPoints: document.getElementById("showPolarityPoints"),
-        stopNegNeg: document.getElementById("stopNegNeg"),
         jitter: document.getElementById("jitter"),
         jitterAmount: document.getElementById("jitterAmount"),
         jitterVal: document.getElementById("jitterVal"),
@@ -699,15 +659,15 @@
           contractionStage,
           expansionStage,
           enableExpansionStage: ui.enableExpansionStage.checked,
-          showConstructionPoints: ui.showConstructionPoints.checked,
+          showConstructionPoints: false,
           showForm: ui.showForm.checked,
           showFormOpacity: parseFloat(ui.showFormOpacity.value),
           showConstructionLines: ui.showConstructionLines.checked,
-          showAxis: ui.showAxis.checked,
-          showEdgeIds: ui.showEdgeIds.checked,
-          showTriangleIds: ui.showTriangleIds.checked,
+          showAxis: false,
+          showEdgeIds: false,
+          showTriangleIds: false,
           showPolarityPoints: ui.showPolarityPoints.checked,
-          stopNegNeg: ui.stopNegNeg.checked,
+          stopNegNeg: true,
           jitter: ui.jitter.checked,
           jitterAmount: parseFloat(ui.jitterAmount.value),
           smoothing: parseFloat(ui.smoothing.value),
