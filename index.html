@@ -615,6 +615,23 @@
           }
         }
 
+        const rootAxis = axes && axes.length ? axes[0] : null;
+        const rootBase = rootAxis && isFinitePoint(rootAxis.anchor) ? rootAxis.anchor : null;
+        const firstExpansionAxis =
+          axes && axes.length
+            ? axes.find((axis) => axis && axis.id !== 0 && axis.parent === 0 && isFinitePoint(axis.anchor))
+            : null;
+        const firstExpansionCenter = firstExpansionAxis ? firstExpansionAxis.anchor : null;
+        const baseSidePoint = points[0];
+        if (isFinitePoint(baseSidePoint) && isFinitePoint(firstExpansionCenter) && isFinitePoint(rootBase)) {
+          pushTriangleIfValid(triangles, {
+            a: clonePoint(baseSidePoint),
+            b: clonePoint(firstExpansionCenter),
+            c: clonePoint(rootBase),
+            id: `${typeTag}${stepTag}-basecap`,
+          });
+        }
+
         return sanitizeTriangles(triangles);
       }
 
@@ -1175,7 +1192,7 @@
             !limitGroups ||
             !hasGroupedInput ||
             (allowGroup2 && groupId === 2) ||
-            (allowGroup4 && groupId === 4);
+            (allowGroup4 && groupId === 3);
           let edge2AdjacencyAllowed = true;
           if (edge2FirstCycle && groupId === 2) {
             const prevSegIsNegNeg = i > 0 && polIn[i - 1] < 0 && polIn[i] < 0;
