@@ -76,10 +76,14 @@ This repository now uses the staged pipeline version as the default code version
 - Smoothing
 - Export PNG Steps
 
-## Known Issues
-- Show Form triangulation still needs a fix in some edge cases.
-
 ## Getting Started
 1. Start a local server in this folder:
    - py -m http.server 8000
 2. Open http://localhost:8000/ in your browser.
+
+## GitHub Pages
+- This repo includes `.github/workflows/deploy-pages.yml` to deploy `index.html` on every push to `main`.
+- Expected site URL: `https://sbrgkmn.github.io/260203_Leaf/`
+- One-time repo setting:
+  - GitHub -> `Settings` -> `Pages` -> `Build and deployment` -> `Source: GitHub Actions`
+- If the repo is private, GitHub Pages may require a paid plan. Public repo is the simplest setup.
