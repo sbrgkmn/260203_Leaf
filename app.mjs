@@ -1,71 +1,52 @@
-import { PRESETS, generate, frameFor, svgFor } from './leaf.mjs';
-import { atlasRows, atlasTable, atlasSvg } from './atlas.mjs';
-import { STAGES } from './growth.mjs';
+import { PRESETS, generate, frameFor, svgFor } from './leaf.mjs?v=rhino-2';
+import { atlasRows, atlasTable, atlasSvg } from './atlas.mjs?v=rhino-2';
+import { STAGES } from './growth.mjs?v=rhino-2';
 const $ = id => document.getElementById(id);
 const studies = PRESETS.map(p => ({ ...structuredClone(p), veins: true, points: false }));
 let presetIndex = 0, params, steps = [], frame, selected = 0, timer = null, pending = false;
 const operationFields = [
-  ['position', 'Position', .02, .98, .01],
-  ['intensity', 'Intensity', -1.5, 1.5, .01],
-  ['rotation', 'Rotation', -80, 85, 1],
+  ['position', 'Position scale', 0, 2, .01],
+  ['intensity', 'Intensity scale', -2, 2, .01],
 ];
 const help = {
-  expansion: ['Place a point along the current edge.', 'Signed displacement from the boundary: positive pushes out, negative pulls in. Zero leaves the edge unchanged.', 'Rotate the displacement relative to the outward edge normal.'],
-  contraction: ['Place a point along each edge, toward the E point.', 'Signed displacement: positive pulls toward the center; negative pushes away and can keep adding surface.', 'Rotate the displacement to or away from the center.'],
+  expansion: ['Scale the saved E positions along the current vein axis.', 'Scale the saved E vector lengths. The source clamps E values to 0–1.'],
+  contraction: ['Scale the saved C positions along each boundary edge.', 'Scale the saved C strengths. Negative values are retained where the original definition permits them. Negative endpoints use the separate stem rule.'],
 };
 function format(id, value) {
-  if (/cycles|shoots|secondaryPairs/.test(id)) return String(value);
-  if (/rotation|Rotation|spread/.test(id)) return `${value} deg`;
+  if (id.includes('cycles')) return String(value);
+  if (id.includes('rotation')) return `${value} deg`;
   if (id.includes('intensity')) return `${Number(value)>0?'+':''}${Number(value).toFixed(2)}`;
-  return Number(value).toFixed(id.includes('minLength') ? 3 : 2);
+  return Number(value).toFixed(id==='firstPosition'||id.includes('Length') ? 3 : 2);
 }
 function slider(id, label, min, max, increment, value, title = '') {
   return `<label class="slider" for="${id}" title="${title}"><span class="slider-heading"><span>${label}</span><output for="${id}" id="${id}Value">${format(id,value)}</output></span><input id="${id}" type="range" min="${min}" max="${max}" step="${increment}" value="${value}"></label>`;
 }
 function renderControls() {
-  $('trajectory').value = params.trajectory;
-  $('paperReference').textContent = params.reference + ' / inferred rule';
-  $('paperObservation').textContent = params.observation;
-  $('paperRecipe').textContent = params.recipe;
-  const g=params.growth;
-  $('family').value=g.family==='compound'?'compound':'joined';
-  $('growthControls').innerHTML = `
-    ${slider('g-shoots',params.trajectory==='base'?'Rays per side':'Shoot pairs',1,18,1,g.shoots)}
-    ${slider('g-width',params.trajectory==='base'?'Ray length':'Lateral reach',.08,1.3,.01,g.width)}
-    ${slider('g-spread',params.trajectory==='base'?'Fan spread':'Branch angle',0,165,1,g.spread)}
-    <details class="advanced" open><summary>Base → middle → tip profile</summary><p class="stage-note">Relative shoot length along the framework. Position and rotation can vary along it too.</p><div id="profilePlot"></div>
-    ${['Base','Middle','Tip'].map((name,i)=>slider(`g-profile-${i}`,`${name} length`,.05,1.5,.01,g.profile[i])).join('')}
-    ${slider('g-spacing','Spacing bias',.4,2.5,.05,g.spacing,'1 is evenly spaced; higher values cluster attachments toward the base.')}
-    ${slider('g-tipRotation','Rotation change toward tip',-35,35,1,g.tipRotation)}
-    </details>
-    <details class="advanced"><summary>Attachment and hierarchy</summary>
-    ${slider('g-start','First attachment / stem',.05,.7,.01,g.start)}
-    ${params.trajectory==='base'?slider('g-terminalScale','Central ray length',.3,1.3,.01,g.terminalScale):slider('g-end','Last attachment',.35,.9,.01,g.end)}
-    ${g.family==='compound'?slider('g-leafletWidth','Initial leaflet width',.02,.35,.01,g.leafletWidth)+slider('g-secondaryPairs','Secondary pairs per shoot',0,7,1,g.secondaryPairs):''}
-    </details>`;
-  renderProfile();
-  $('stageControls').innerHTML = params.stages.map((rule, i) => `
+  $('trajectory').value=params.trajectory;
+  $('paperReference').textContent=params.reference+' / '+params.source;
+  $('paperObservation').textContent=params.observation;
+  $('paperRecipe').textContent=params.recipe;
+  $('stageControls').innerHTML=params.stages.map((rule,i)=>`
     <fieldset class="stage-control"><legend>0${i+1} / ${STAGES[i]}</legend>
-    <p class="stage-note">${['Set the primary framework. C controls separation between shoots.','Broaden local blades while primary tips and attachment points stay fixed.','Add smaller lobes or teeth along existing margins.'][i]}</p>
-    ${slider(`s${i}-cycles`, 'E / C cycles', 0, 20, 1, rule.cycles, 'Zero skips this stage.')}
-    <div class="operation-pair">${['expansion','contraction'].map(operation => `
-      <fieldset class="operation-control"><legend>${operation === 'expansion' ? 'E / Expansion' : 'C / Contraction'}</legend>
-      <p class="phase-key">${operation==='expansion'?(i?'Negative: inward / Positive: outward':'Reach / opposite signs seed mirrored shoots'):'Negative: outward / Positive: inward'}</p>
-      ${operationFields.map(([key,label,min,max,increment],j) => slider(`s${i}-${operation}-${key}`, label,
-        min, max,
-        increment, rule[operation][key], !i&&operation==='expansion'?['Shift shoot placement.','Set structural shoot reach; opposite signs establish mirrored shoots. Later stages apply signed boundary displacement.','Rotate the primary shoots.'][j]:help[operation][j])).join('')}</fieldset>`).join('')}</div>
-    ${i?`<details class="advanced"><summary>Cycle schedule and affected region</summary>
-    ${slider(`s${i}-decay`,'Intensity retained each cycle',.1,1, .05,rule.decay,'0.5 halves the displacement each successive cycle.')}
-    <label class="select-label" for="s${i}-target">Affected region</label><select id="s${i}-target">${[['all','All blade margins'],['upper','Upper shoots'],['lower','Lower shoots'],['tips','Near shoot tips']].map(([v,label])=>`<option value="${v}" ${v===rule.target?'selected':''}>${label}</option>`).join('')}</select>
-    ${['Base','Middle','Tip'].map((name,j)=>slider(`s${i}-profile-${j}`,`${name} intensity multiplier`,0,1.5,.05,rule.profile[j])).join('')}
-    ${slider(`s${i}-minLength`, 'Minimum detail length', .005, .3, .001, rule.minLength)}</details>`:''}
+    <p class="stage-note">${i?'Each finished shoot edge starts its own blade recursion.':'Radial or linear continuation selects which descendant edges develop.'}</p>
+    ${!i?slider('firstPosition','First E / blade origin',0,1,.001,rule.positions[0],'Position along the initial axis: 0 at the base, 1 at the tip. Sets the first branching origin and influences stalk length.'):''}
+    ${slider(`s${i}-cycles`,'E / C cycles',0,20,.5,rule.cycles,'Half a cycle ends at E. Zero skips this phase.')}
+    ${slider(`s${i}-rotation`,'E rotation',0,180,.001,rule.rotation,'The source usually multiplies this angle by 1 − axis position.')}
+    <details class="advanced"><summary>Vary saved E / C schedules</summary>
+    <p class="stage-note">Scales of 1 retain the saved curves. Source limits still apply.</p>
+    <div class="operation-pair">${['expansion','contraction'].map(operation=>`
+      <fieldset class="operation-control"><legend>${operation==='expansion'?'E / Expansion':'C / Contraction'}</legend>
+      ${operationFields.map(([key,label,min,max,increment],j)=>slider(`s${i}-${operation}-${key}`,label,operation==='expansion'||params.variant.contractionIntensityMin===0?0:min,max,increment,rule[operation][key],help[operation][j])).join('')}
+      </fieldset>`).join('')}</div>
+    ${slider(`s${i}-stemPosition`,'Stem C position',0,1,.01,rule.stemPosition)}
+    ${slider(`s${i}-firstStemIntensity`,'First stem C strength',-1,1,.01,rule.firstStemIntensity)}
+    ${slider(`s${i}-stemIntensity`,'Later stem C strength',-1,1,.01,rule.stemIntensity)}
+    ${slider(`s${i}-minExpansionLength`,'E minimum edge length',0,5,.01,rule.minExpansionLength)}
+    ${rule.minContractionLength===null?'':slider(`s${i}-minContractionLength`,'C minimum edge length',0,5,.01,rule.minContractionLength)}
+    <details><summary>Original generation values</summary><table class="schedule-table"><thead><tr><th>Step</th><th>Position</th><th>Intensity</th></tr></thead><tbody>${rule.positions.map((v,g)=>`<tr><td>${g+1} / ${g%2?'C':'E'}</td><td>${v.toFixed(4)}</td><td>${rule.intensities[g]?.toFixed(4)??'—'}</td></tr>`).join('')}</tbody></table></details></details>
     </fieldset>`).join('');
-  $('drawingControls').innerHTML = slider('smoothing', 'Boundary smoothing', 0, 1, .01, params.smoothing);
-  $('veins').checked = params.veins; $('points').checked = params.points;
-}
-function renderProfile() {
-  const p=params.growth.profile;
-  $('profilePlot').innerHTML=`<svg viewBox="0 0 260 68" role="img" aria-label="Shoot length profile from base to tip"><path d="M 10 54 H 250" stroke="#ddd"/><path d="M 10 ${54-p[0]*30} L 130 ${54-p[1]*30} L 250 ${54-p[2]*30}" fill="none" stroke="#586b43" stroke-width="2"/>${p.map((v,i)=>`<circle cx="${10+i*120}" cy="${54-v*30}" r="3" fill="#586b43"/>`).join('')}<text x="10" y="66">Base</text><text x="115" y="66">Middle</text><text x="233" y="66">Tip</text></svg>`;
+  $('drawingControls').innerHTML=`<label class="check"><input id="rounding" type="checkbox" ${params.rounding?'checked':''}> Rounded blade boundary</label>`+slider('positiveWeight','Positive pole weight',0,20,.01,params.positiveWeight)+slider('negativeWeight','Negative pole weight',0,20,.01,params.negativeWeight);
+  for(const key of ['veins','points','frontier'])$(key).checked=!!params[key];
 }
 function presetButton(preset, i) {
   const sample = generate(preset).steps;
@@ -84,8 +65,8 @@ function select(index) {
   $('preview').innerHTML = step ? svgFor(step, params, frame, 'preview-clip') : `<div class="empty-preview">${params.stages.some(s=>s.cycles)?'No surface formed. Use a non-zero initial E intensity or adjust the stopping rule.':'Set a stage to at least one cycle to begin expansion.'}</div>`;
   $('previewTitle').textContent = !step ? 'No operations' : selected === steps.length-1 ? 'Final form' : step.operation === 'E' ? 'Expansion' : 'Contraction';
   $('previewCode').textContent = step ? `${String(selected+1).padStart(2,'0')} / ${String(steps.length).padStart(2,'0')}` : '0 / 0';
-  const direction=step && (step.operation==='E' ? (step.stage===1?'establish shoots':step.intensity<0?'inward':'outward') : (step.intensity<0?'away from center':'toward center'));
-  $('stepDirection').textContent = step ? `${step.operation} ${format('intensity',step.intensity)} / ${step.intensity===0?'neutral displacement':direction}` : '';
+  $('stepDirection').textContent = step ? `${STAGES[step.stage-1]} / ${step.operation} / schedule strength ${format('intensity',step.intensity)}` : '';
+  $('frontierSummary').textContent=step?`${step.activeCount} continuing / ${step.dormantCount} resting boundary edges`:'';
   $('previous').disabled = !step || selected === 0;
   $('next').disabled = !step || selected === steps.length-1;
   $('play').disabled = steps.length < 2; $('last').disabled = !step;
@@ -98,7 +79,7 @@ function render(final = false) {
   $('sequenceSummary').textContent = `${steps.length} operations / ${params.name}`;
   $('stopReason').textContent = result.stops.join(' ');
   const slug=params.name.toLowerCase().replaceAll(' ','-');
-  $('paperComparison').innerHTML=`<div class="reference-pair"><figure><img src="references/${slug}-final.png" alt="Published ${params.name}, Figure 7" loading="lazy"><figcaption>Published / Figure 7</figcaption></figure><figure>${steps.length?svgFor(steps.at(-1),params,frame,'reference-current'):'No surface'}<figcaption>Current reconstruction</figcaption></figure></div><p>The published series below may skip operations. Compare branching and stage changes; its columns do not correspond one-to-one with ours.</p><div class="reference-series"><img src="references/${slug}-series.png" alt="Published E/C development series for ${params.name}" loading="lazy"></div><p>${params.reference} · Sabri Gokmen, <i>Metamorphic Leaves</i> (2020).</p>`;
+  $('paperComparison').innerHTML=`<div class="reference-pair"><figure><img src="references/${slug}-final.png" alt="Published ${params.name}, Figure 7" loading="lazy"><figcaption>Published / Figure 7</figcaption></figure><figure>${steps.length?svgFor(steps.at(-1),params,frame,'reference-current'):'No surface'}<figcaption>Saved definition / current settings</figcaption></figure></div><p>The saved definition and the publication may represent different revisions. Every saved E/C step is shown here; the paper sometimes omits intermediate steps.</p><div class="reference-series"><img src="references/${slug}-series.png" alt="Published E/C development series for ${params.name}" loading="lazy"></div><p>${params.reference} · Sabri Gokmen, <i>Metamorphic Leaves</i> (2020).</p>`;
   let html = '', lastStage = -1;
   steps.forEach((step,i) => {
     if (step.stage !== lastStage) {
@@ -120,20 +101,13 @@ $('steps').addEventListener('click', event => {
 });
 document.querySelector('aside').addEventListener('input', event => {
   const {id, value, checked} = event.target;
-  if (/^s[012]-/.test(id)) {
+  if (/^s[01]-/.test(id)) {
     const [stage,key,parameter] = id.split('-'), rule = params.stages[Number(stage[1])];
-    if (parameter) rule[key][parameter] = Number(value); else rule[key] = key==='target'?value:Number(value);
-  } else if(id.startsWith('g-')) {
-    const [,key,index]=id.split('-');
-    if(index!==undefined)params.growth[key][Number(index)]=Number(value);else params.growth[key]=Number(value);
-    if(key==='start'&&params.growth.start>=params.growth.end)params.growth.end=Math.min(.9,params.growth.start+.05);
-    if(key==='end'&&params.growth.end<=params.growth.start)params.growth.start=Math.max(.05,params.growth.end-.05);
-    if(key==='start'||key==='end')for(const other of ['start','end'])if($(`g-${other}`)){$(`g-${other}`).value=params.growth[other];$(`g-${other}Value`).textContent=format(other,params.growth[other]);}
-    if(key==='profile')renderProfile();
-  } else if (id === 'trajectory') {params.trajectory = value;renderControls();}
-  else if (id === 'family') {params.growth.family=value;renderControls();}
-  else if (id === 'smoothing') params.smoothing = Number(value);
-  else if (id === 'veins' || id === 'points') params[id] = checked;
+    if (parameter) rule[key][parameter] = Number(value); else rule[key] = Number(value);
+  } else if(id==='trajectory'){params.trajectory=value;renderControls();}
+  else if(id==='firstPosition')params.stages[0].positions[0]=Number(value);
+  else if(['positiveWeight','negativeWeight'].includes(id))params[id]=Number(value);
+  else if(['veins','points','frontier','rounding'].includes(id))params[id]=checked;
   else return;
   if ($(id+'Value')) $(id+'Value').textContent = format(id,value);
   pause();
@@ -214,7 +188,7 @@ $('atlasZoom').oninput = event => sizeAtlas(Number(event.target.value));
 $('fitAtlas').onclick = () => {
   const columns=Math.max(0,...atlasData.map(row=>row.steps.length))+1;
   const label=$('atlasContent').querySelector('.row-name').getBoundingClientRect().width;
-  sizeAtlas(Math.max(16,Math.floor(($('atlasContent').clientWidth-label)/columns)-2));
+  sizeAtlas(Math.max(12,Math.floor(($('atlasContent').clientWidth-label)/columns)-2));
 };
 $('atlasContent').onclick = event => {
   const button = event.target.closest('[data-study]'); if (!button) return;

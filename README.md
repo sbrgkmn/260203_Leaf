@@ -1,61 +1,39 @@
 # 260203_Leaf
 
-A dependency-free leaf development study based on Sabri Gokmen's *Metamorphic Leaves* (Leonardo 53(5), 2020, figures 3-7). Sixteen editable recipes share one growth engine. Black surfaces and white branches show every E/C operation, starting at **01 / Expansion**.
+A dependency-free browser study of Sabri Gokmen's *Metamorphic Leaves*. Sixteen saved Grasshopper definitions drive one recursive JavaScript engine. Black surfaces and white axes show every E/C operation, starting at **01 / Expansion**. The editor includes paper comparisons, playback, a sixteen-row development atlas, and PNG/SVG exports.
 
-## Run locally
+## Run
 
 ```sh
 python -m http.server 8000 --bind 127.0.0.1
 ```
 
-Open http://127.0.0.1:8000/. No installation or build is required.
+Open http://127.0.0.1:8000/. No build, Rhino installation, or dependencies are needed to use the app.
 
-## Development model
+## Original rules, compact implementation
 
-The framework is separated from surface refinement so repeated boundary subdivision does not accidentally create new primary shoots.
+E places its origin along the current vein axis, then adds a scaled, rotated boundary vector. Its angle is usually `rotation × (1 − position)`. C interpolates along each boundary edge and displaces that point toward the incoming origin. Negative endpoints use a separate stem position and strength. Polarity stays positive for E and negative for C.
 
-1. **Establish shoots.** Choose a connected blade or separate leaflets, and a radial or bilateral arrangement. Shoot count, reach, angle, attachment interval, and spacing establish the primary axes. Structural E introduces shoots; C controls their separation.
-2. **Develop blades.** Local E/C displacement broadens each blade around its retained axes. Primary tips, bases, and major sinuses remain anchored. Compound leaves retain separate surfaces. Fern recipes progressively introduce secondary pinnae along the primary shoots.
-3. **Refine margins.** E inserts local outward points and C inserts inward points. Their signed intensities can reverse these directions. Existing points are retained while later subdivision adds smaller features; primary axes are unchanged.
+Radial or linear continuation determines which shoot descendants develop and which rest. Each terminating shoot edge starts blade recursion locally. During blade recursion, endpoint polarity selects continuing edges. Position and intensity vary by generation using the recovered Graph Mapper schedules. Small differences between the archived scripts are configuration fields, not separate species algorithms.
 
-Every stage has matching **position / intensity / rotation** controls for E and C. E/C intensities range from -1.5 to +1.5. During blade and margin development, negative E pulls inward and negative C pushes away from the local axis. Structural E sets shoot reach; its sign seeds the opposite mirrored side, with the same bilateral result. A zero structural E produces no surface. Structural C retains a small width at full separation so the stalk framework remains visible.
+The original clamps are retained: E uses values from 0 to 1; some definitions allow negative C. Negative C moves away from the incoming origin. There is no artificial global outward/inward deformation or collision backoff. Separate rational Bézier weights round positive and negative poles without altering recursion. Extreme edits can produce intersecting boundaries, as in the original rules.
 
-## Orchestration controls
+## Controls
 
-- **Base / middle / tip length:** an interpolated profile controlling primary shoot lengths. On a radial leaf, base refers to the outer, lower rays and tip to the upper rays near the central shoot.
-- **Spacing bias:** distributes attachments along the axis or rays across the fan. One is uniform.
-- **Rotation change toward tip:** progressively changes primary shoot angle.
-- **Attachment and hierarchy:** stem height, last attachment or central ray length, initial leaflet width, and secondary pairs for compound leaves.
-- **Cycle schedule:** stages 2 and 3 multiply intensity by `decay^(cycle - 1)`. A retention of 0.5 halves each successive displacement.
-- **Affected region:** grow all margins, upper shoots, lower shoots, or points near shoot tips. Stage-specific base/middle/tip multipliers vary displacement strength spatially.
-- **Minimum detail length:** stops subdivision of small edges. Zero cycles skips a stage. Skipping structure initializes its configured framework before the first displayed local operation.
+- **First E / blade origin:** position on the initial axis, controlling the initial branching origin and influencing stalk length.
+- **Shoot trajectory, E/C cycles, E rotation:** main development controls. Half a cycle ends at E.
+- **Vary saved E/C schedules:** position/intensity multipliers, stem rules, stopping lengths, and the numeric generation values. A multiplier of 1 preserves the saved curve. Extended cycles hold the last value of each operation separately.
+- **Drawing:** original rounding toggle, positive/negative pole weights, white branches, polar points, and continuing/resting edge overlays.
+- **View all 16 leaf sequences:** complete rows at a fixed scale per leaf. Edits persist until reload; reset restores the saved definition.
 
-The drawing's smoothing is independent of development. Display-scale simplification keeps rounding effective as point density increases. White axes/branches and polar points can be toggled independently.
+## Source and verification
 
-## Comparison and exports
-
-**Compare with the paper** opens the selected leaf's published Figure 7 silhouette beside the live reconstruction, followed by its published E/C series. Reference crops come from the user-supplied PDF; see `references/README.md`. Figure 6 skips some computation steps, so published and generated columns do not correspond one-to-one.
-
-**View all 16 leaf sequences** opens the atlas. Each leaf occupies one row, and every generated E/C operation has a column. Green dividers begin blade development; ochre dividers begin margin refinement. All steps in a row share one scale. Labels and final forms remain visible when scrolling. Click any form to edit that leaf and step; use **Fit all columns** for an overview.
-
-Exports include the selected form as PNG or SVG, a PNG sheet of the selected sequence, and the entire atlas as vector SVG. Edits remain separate for each leaf during the page session. **Reset this leaf** restores only the selected recipe; reloading restores all defaults.
-
-## Code
-
-- `growth.mjs`: framework, local surface development, role restrictions, cycle schedules, and bounded subdivision.
-- `leaf.mjs`: shared geometry helpers, smoothing, and SVG rendering.
-- `presets.mjs`: compact named recipes and paper interpretations. `polar(position, intensity, rotation)` and `stage(cycles, E, C, decay, minimumLength)` keep settings concise.
-- `app.mjs`: controls, per-leaf settings, playback, paper comparison, and exports.
-- `atlas.mjs`: comparison table and standalone atlas SVG.
-
-## Validation and limits
+`data/grasshopper-recipes.mjs` contains the recovered parameters, source archive names, Python hashes, and original generation pairs. `growth.mjs` implements the recursion; `blade.mjs` implements rational rounding; `leaf.mjs` draws the filled boundary. The original `.gh` files are not modified or required at runtime.
 
 ```sh
 node --test leaf.test.mjs
 ```
 
-Checks cover all sixteen complete E-first sequences, bilateral symmetry, non-crossing contours, fixed primary axes, compound leaflet separation and broadening, signed displacement, all six local controls, regional growth, spatial profiles, cycle decay, secondary hierarchy, stage skipping, bounded extreme settings, and complete SVG atlas exports.
+The tests compare all saved frames for all sixteen definitions against their original Python scripts executed with an independent point/vector shim. They check coordinates, polarity, origins, boundary order, veins, and rounded final boundary samples. Additional checks cover the first E origin, stem behavior, local blade transitions, source bounds, rounding, skipped phases, the 12,000-point safety limit, and atlas exports.
 
-The engine reduces local displacement if it would fold or invert a surface, and reports this in the editor. Extremely dense hierarchies reserve a fixed detail budget, with at most 4,096 displayed control points. A structural arrangement that would fold stops with an explanation. These are planar geometric studies: separate leaflets can overlap under extreme settings, and the model does not simulate tissue or branch collisions in 3D.
-
-The recipes are approximate reconstructions, not recovered paper parameters. Their explicit three-stage organization and retained shoot framework extend the published method. Shape similarity still depends on visual review; passing geometric tests does not establish a match to the paper. See `docs/paper-rule-reading.md` for the calibration approach and remaining differences.
+These are recovered **saved definitions**, not a claim that every file is the exact publication revision. In particular, `oak.gh` has rounding disabled. The Graph Mapper curves are evaluated from their stored control points; the tests validate the port given those extracted inputs, not Grasshopper's internal evaluation independently. See [source notes](docs/paper-rule-reading.md) and [extraction instructions](tools/grasshopper/README.md).

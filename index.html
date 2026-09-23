@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>260203_Leaf</title><link rel="stylesheet" href="style.css">
+<title>260203_Leaf</title><link rel="stylesheet" href="style.css?v=rhino-2">
 </head>
 <body>
-<header><div><span class="eyebrow">260203_Leaf / FORM STUDIES</span><h1>Metamorphic leaves<span>.</span></h1></div><div class="header-actions"><p>Shoots. Blades. Margins.<br>Three stages, signed E/C rules.</p><button id="openAtlas" class="primary-button">View all 16 leaf sequences &#8599;</button></div></header>
+<header><div><span class="eyebrow">260203_Leaf / FORM STUDIES</span><h1>Metamorphic leaves<span>.</span></h1></div><div class="header-actions"><p>Shoots, then blades.<br>One recursive boundary rule.</p><button id="openAtlas" class="primary-button">View all 16 leaf sequences &#8599;</button></div></header>
 <main>
 <section class="study">
 <div class="section-heading"><h2>16 starting forms</h2><span>Figure 7 / a&ndash;p</span></div>
@@ -13,20 +13,23 @@
 <div class="section-heading sequence-heading"><h2>Development sequence</h2><span id="sequenceSummary" aria-live="polite"></span></div>
 <p class="hint">Start at 01 / Expansion. Select any step to inspect it. All steps share the same scale.</p>
 <section class="paper-reading"><strong id="paperReference"></strong><p id="paperObservation"></p><p id="paperRecipe"></p><details id="comparePaper"><summary>Compare with the paper</summary><div id="paperComparison"></div></details></section><div id="steps"></div><p id="stopReason" class="hint"></p>
-<details class="method"><summary>How development works</summary><p><b>1 / Shoots.</b> Choose a connected blade or separate leaflets, then establish the branch arrangement. Base, middle, and tip profiles control shoot length; spacing and rotation control their distribution. E introduces shoots; C separates the surface around them.</p><p><b>2 / Blades.</b> Signed E/C displacements develop local surfaces around the retained framework. Primary tips and attachment points stay fixed. Compound leaves broaden their individual leaflets; fern recipes add secondary pinnae.</p><p><b>3 / Margins.</b> Local subdivision adds smaller lobes and teeth. A cycle schedule reduces intensity over time, and an affected-region control can focus the operation on upper shoots, lower shoots, or their tips.</p><p>Positive E moves out; negative E moves in. Positive C draws toward the local shoot axis; negative C moves away. The initial E establishes the framework, so its opposite sign is an equivalent mirrored seed. Zero initial E produces no surface. Local displacements are reduced when needed to avoid a folded boundary. Rounding is a drawing control.</p><p>These developmental recipes interpret Sabri Gokmen, <i>Metamorphic Leaves</i>, Leonardo 53(5), 2020, figures 3&ndash;7. They extend the published method; they do not recover its original parameters. Edits are retained separately for each leaf while this page stays open.</p></details>
+<details class="method"><summary>How development works</summary>
+<p><b>1 / Shoots.</b> E anchors a rotated vector on the current vein axis. C inserts a negative point on each flank and moves it toward the incoming origin. Radial or linear continuation selects which descendants keep developing; other edges rest. The first E position sets the initial branching origin along the stalk.</p>
+<p><b>2 / Blades.</b> When an individual shoot edge reaches its depth or length limit, it starts blade recursion locally. Endpoint polarity determines which blade edges continue. Position and intensity vary by generation using the curves saved in the original Grasshopper files.</p>
+<p><b>Boundary rounding.</b> Positive and negative poles have separate rational Bézier weights. These soften tips and indentations without changing recursion. The optional overlay shows continuing edges in green and resting edges in gray.</p>
+<p>Parameters and rule variants were recovered from the supplied Grasshopper definitions. These saved files may differ from the publication revision. Source rules are retained, including their individual parameter limits and stem conditions; extreme edits can cross the boundary. Edits persist per leaf while the page stays open.</p></details>
 </section>
 <aside>
-<section class="preview-panel"><div class="section-heading"><h2 id="previewTitle">Selected form</h2><span id="previewCode"></span></div><div id="preview"></div><p id="stepDirection" class="direction-readout"></p><div class="playback"><button id="previous" aria-label="Previous step">&#8592;</button><button id="play">Play sequence</button><button id="next" aria-label="Next step">&#8594;</button><button id="last">Final</button></div></section>
-<section class="control-panel"><div class="section-heading"><h2>Development rules</h2><button id="reset" class="text-button">Reset this leaf</button></div><label class="select-label" for="family">Surface organization</label><select id="family"><option value="joined">Connected blade</option><option value="compound">Separate leaflets</option></select><label class="select-label" for="trajectory">Branch arrangement</label><select id="trajectory"><option value="base">Radial / shared center</option><option value="tip">Bilateral / along axis</option></select><div id="growthControls"></div><div id="stageControls"></div></section>
-<section class="control-panel"><h2>Drawing</h2><div id="drawingControls"></div><label class="check"><input id="veins" type="checkbox" checked> White axis & branches</label><label class="check"><input id="points" type="checkbox"> Show polar control points</label></section>
+<section class="preview-panel"><div class="section-heading"><h2 id="previewTitle">Selected form</h2><span id="previewCode"></span></div><div id="preview"></div><p id="stepDirection" class="direction-readout"></p><p id="frontierSummary" class="hint"></p><div class="playback"><button id="previous" aria-label="Previous step">&#8592;</button><button id="play">Play sequence</button><button id="next" aria-label="Next step">&#8594;</button><button id="last">Final</button></div></section>
+<section class="control-panel"><div class="section-heading"><h2>Development rules</h2><button id="reset" class="text-button">Reset this leaf</button></div><label class="select-label" for="trajectory">Shoot trajectory</label><select id="trajectory"><option value="base">Radial / around a shared origin</option><option value="tip">Linear / toward the apex</option></select><div id="stageControls"></div></section>
+<section class="control-panel"><h2>Drawing</h2><div id="drawingControls"></div><label class="check"><input id="veins" type="checkbox" checked> White axis & branches</label><label class="check"><input id="points" type="checkbox"> Show polar control points</label><label class="check"><input id="frontier" type="checkbox"> Show active / dormant edges</label></section>
 <section class="exports"><button id="exportPng">Export selected PNG</button><button id="exportSheet">Export steps PNG</button><button id="exportSvg">Export selected SVG</button><span id="exportStatus" role="status"></span></section>
 </aside>
 </main>
 <dialog id="atlas" aria-labelledby="atlasTitle">
 <div class="atlas-header"><div><span class="eyebrow">METAMORPHIC LEAVES / COMPARATIVE ATLAS</span><h2 id="atlasTitle">Sixteen leaves. Every E/C cycle.</h2><p>Read each row left to right. Select a form to edit it. Your current leaf settings are included.</p></div><button id="closeAtlas" aria-label="Close leaf atlas">Close &#215;</button></div>
-<div class="atlas-toolbar"><span><b>E</b> Expansion &nbsp; <b>C</b> Contraction &nbsp; <i class="stage-key"></i> Blades &nbsp; <i class="stage-key margin-key"></i> Margins</span><label for="atlasZoom">Cell size <input id="atlasZoom" type="range" min="16" max="180" step="1" value="96"><output id="atlasZoomValue" for="atlasZoom">96px</output></label><button id="fitAtlas">Fit all columns</button><button id="exportAtlas">Export atlas SVG</button><span id="atlasStatus" role="status"></span></div>
+<div class="atlas-toolbar"><span><b>E</b> Expansion &nbsp; <b>C</b> Contraction &nbsp; <i class="stage-key"></i> Blades</span><label for="atlasZoom">Cell size <input id="atlasZoom" type="range" min="12" max="180" step="1" value="96"><output id="atlasZoomValue" for="atlasZoom">96px</output></label><button id="fitAtlas">Fit all columns</button><button id="exportAtlas">Export atlas SVG</button><span id="atlasStatus" role="status"></span></div>
 <div id="atlasContent" class="atlas-content"></div>
 </dialog>
-<script type="module" src="app.mjs"></script>
+<script type="module" src="app.mjs?v=rhino-2"></script>
 </body></html>
-

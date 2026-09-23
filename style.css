@@ -491,7 +491,7 @@ aside {
 @media(max-width:700px) {.header-actions {gap:0}.primary-button {font-size:10px;max-width:135px;padding:8px}.presets {grid-template-columns:repeat(4,minmax(0,1fr))}.preset svg {height:60px}.preset>span {font-size:9px}h1 {font-size:23px}#atlas {width:100vw;height:100dvh;border:0;border-radius:0}.atlas-header {padding:14px}#atlasTitle {font-size:19px}.atlas-toolbar {padding:10px 14px;gap:12px}.atlas-table .row-name {min-width:110px;width:110px;max-width:110px}.atlas-table .atlas-final {position:static}}
 .atlas-toolbar #fitAtlas {margin-left:0}
 .compact-atlas .atlas-step-label {display:none}
-.compact-atlas .atlas-table thead th b {display:block;margin:0;font-size:9px}
+.compact-atlas .atlas-table thead th b {display:none}
 .compact-atlas .atlas-table thead th span {font-size:8px}
 .compact-atlas .atlas-table td {vertical-align:middle}
 .compact-atlas .row-name button {padding:6px 10px;font-size:10px;line-height:1.2}
@@ -502,12 +502,7 @@ aside {
 .paper-reading p {margin:5px 0 0}
 .direction-readout {font-size:10px;color:var(--accent);margin:0 0 10px;text-align:center;font-variant-numeric:tabular-nums}
 .phase-key {font-size:9px;color:var(--muted);line-height:1.4;margin:0 0 7px}
-#profilePlot svg {width:100%;height:70px;margin-top:9px;display:block}
-#profilePlot text {font:9px sans-serif;fill:#72766c}
-#growthControls {border-bottom:1px solid var(--line);padding-bottom:18px}
-#growthControls .advanced {margin-top:18px}
-.atlas-table .stage-3 {border-left-color:#a98339}
-.margin-key {background:#a98339}
+#frontierSummary {text-align:center;margin:0 0 12px;font-size:10px}
 .reference-pair {display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
 .reference-pair figure {margin:0;background:white;padding:8px;text-align:center}
 .reference-pair img,.reference-pair svg {width:100%;height:180px;object-fit:contain}
@@ -516,3 +511,7 @@ aside {
 .reference-series img {width:100%;min-width:650px;display:block}
 #comparePaper {margin-top:10px}
 @media(max-width:700px){.paper-reading {order:3}}
+/* Numeric schedules remain secondary to the main form controls. */
+.schedule-table {width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums;margin:10px 0}
+.schedule-table th,.schedule-table td {text-align:right;padding:4px;border-bottom:1px solid #ddd}
+.schedule-table th:first-child,.schedule-table td:first-child {text-align:left}

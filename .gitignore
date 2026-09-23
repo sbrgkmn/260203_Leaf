@@ -1,2 +1,3 @@
 # Local reference renders, tuning studies, and the pre-refactor backup.
 tmp/
+__pycache__/

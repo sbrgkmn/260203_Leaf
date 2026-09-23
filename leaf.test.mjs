@@ -1,136 +1,108 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {PRESETS,generate,boundary,frameFor,svgFor,displace} from './leaf.mjs';
-import {framework,profileAt,isSimple} from './growth.mjs';
+import {readFileSync} from 'node:fs';
+import {gunzipSync} from 'node:zlib';
+import {PRESETS,generate,frameFor,svgFor} from './leaf.mjs';
+import {buildLeaf,scheduleAt,MAX_POINTS} from './growth.mjs';
 import {atlasRows,atlasTable,atlasSvg} from './atlas.mjs';
-const clone=name=>structuredClone(PRESETS.find(p=>p.name===name));
-const area=s=>s.surfaces.reduce((sum,points)=>sum+Math.abs(points.reduce((a,p,i)=>{const q=points[(i+1)%points.length];return a+p.x*q.y-p.y*q.x;},0))/2,0);
-const coordinates=s=>s.surfaces.map(points=>points.map(({x,y})=>[x,y]));
-const primary=s=>s.branches.filter(b=>b.id&&!b.parent);
+const fixtures=JSON.parse(gunzipSync(readFileSync(new URL('./test/fixtures/grasshopper.json.gz',import.meta.url))));
+const close=(a,b,context='')=>assert.ok(Math.abs(a-b)<1e-9,`${context}: ${a} != ${b}`);
+const xy=(p,a,context)=>{close(p.x,a[0],context);close(p.y,a[1],context);};
 
-test('all 16 recipes generate complete, finite, symmetric E-first sequences',()=>{
- assert.equal(PRESETS.length,16);
- for(const p of PRESETS){
-  const before=JSON.stringify(p),{steps}=generate(p),frame=frameFor(steps);
-  assert.equal(JSON.stringify(p),before,'Generation must not mutate a recipe');
-  assert.equal(steps.length,p.stages.reduce((n,s)=>n+s.cycles*2,0),p.name);
-  for(const [i,s] of steps.entries()){
-   assert.equal(s.operation,i%2?'C':'E');assert.ok(s.pointCount<=4096,p.name);
-   for(const polygon of s.surfaces)assert.ok(isSimple(polygon),`${p.name}: self intersection`);
-   const points=boundary(s),set=new Set(points.map(p=>`${p.x.toFixed(9)},${p.y.toFixed(9)}`));
-   for(const p of points){
-    assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
-    assert.ok(p.x>=frame.x&&p.x<=frame.x+frame.size&&p.y>=frame.y&&p.y<=frame.y+frame.size);
-    assert.ok(set.has(`${(-p.x||0).toFixed(9)},${p.y.toFixed(9)}`),'Exact bilateral geometry');
-   }
-   assert.doesNotMatch(svgFor(s,p,frame),/NaN|Infinity/);
+for(const preset of PRESETS) test(`${preset.name}: original Python recursion, links, veins and final curves`,()=>{
+  const fixture=fixtures.find(f=>f.sourceKey===preset.sourceKey);
+  assert.equal(fixture.scriptHash,preset.scriptHash);
+  const generated=generate(preset);
+  assert.deepEqual(generated.stops,[]);
+  assert.deepEqual(generated.steps.map(s=>s.limits),preset.sourceFrames);
+  assert.equal(generated.steps[0].operation,'E');
+  for(const expected of fixture.frames) {
+    const actual=buildLeaf(preset,expected.limits);
+    assert.equal(actual.points.length,expected.points.length);
+    actual.points.forEach((p,i)=>{
+      const e=expected.points[i];xy(p,e,p.id);assert.equal(p.polarity,e[2]);xy(p.origin,e.slice(3),p.id+' origin');
+    });
+    let cursor=0;
+    for(const p of actual.controlPoints) {
+      assert.equal(p.id,actual.points[cursor].id);
+      cursor=expected.points[cursor][6];
+    }
+    assert.equal(cursor,-1);
+    const branches=actual.branches.slice(1);
+    assert.equal(branches.length,expected.veins.length);
+    branches.forEach((b,i)=>{
+      const e=expected.veins[i],reverse=b.id!==undefined;
+      xy(b.a,e[reverse?1:0],`vein ${i}`);xy(b.b,e[reverse?0:1],`vein ${i}`);
+    });
+    if(expected.blade&&preset.rounding) {
+      const key=p=>p.map(x=>x.toFixed(7).replace('-0.0000000','0.0000000')).join(',');
+      const samples=new Set(actual.surfaces[0].map(p=>key([p.x,p.y])));
+      for(const curve of expected.blade)for(const p of curve)assert.ok(samples.has(key(p)),`Missing original curve sample ${p}`);
+    }
+    const svg=svgFor({...actual,stage:1,operation:'E',cycle:1},{...preset,veins:true},frameFor([actual]));
+    assert.ok(!/NaN|Infinity|undefined/.test(svg));
   }
- }
 });
 
-test('primary shoot identities and positions survive blade and margin development',()=>{
- for(const p of PRESETS){
-  const steps=generate(p).steps,structure=steps.filter(s=>s.stage===1).at(-1);
-  assert.equal(structure.primaryCount,p.growth.shoots*2+1);
-  for(const step of steps.filter(s=>s.stage>1))assert.deepEqual(primary(step),primary(structure),p.name);
- }
+test('first E uses an axis position, not a boundary-normal displacement',()=>{
+  const p=structuredClone(PRESETS[0]);p.stages[0].positions[0]=.4;
+  const a=buildLeaf(p,[1,0]),event=a.events[0],point=a.points.find(x=>x.id===event.point);
+  close(event.center.y,4);close(event.center.x,0);
+  const angle=p.stages[0].rotation*.6*Math.PI/180,strength=p.stages[0].intensities[0];
+  close(point.x,(p.seedHalfWidth*Math.cos(angle)-10*Math.sin(angle))*strength);
+  close(point.y,4+(p.seedHalfWidth*Math.sin(angle)+10*Math.cos(angle))*strength);
+  p.stages[0].positions[0]=.7;
+  assert.notDeepEqual(buildLeaf(p,[1,0]).surfaces,a.surfaces);
 });
 
-test('compound leaves separate before filling; continuous blades remain connected',()=>{
- for(const name of ['Walnut','American ash']){
-  const p=clone(name),s=generate(p).steps,early=s.filter(s=>s.stage===1).at(-1),final=s.at(-1);
-  assert.equal(early.surfaces.length,p.growth.shoots*2+1);
-  assert.equal(final.surfaces.length,early.surfaces.length);
-  assert.ok(area(final)>area(early)*2,`${name}: leaflets should broaden`);
- }
- for(const name of ['Magnolia','White oak','Buttercup'])assert.ok(generate(clone(name)).steps.every(s=>s.surfaces.length===1));
+test('stem C has its own position and first-operation strength',()=>{
+  const p=structuredClone(PRESETS[1]),frame=buildLeaf(p,[2,0]);
+  const e=frame.points.find(p=>p.id==='L:E'),c=frame.points.find(p=>p.id==='L.0:C');
+  const rule=p.stages[0],base=frame.points[0];
+  const at={x:e.x+(base.x-e.x)*rule.stemPosition,y:e.y+(base.y-e.y)*rule.stemPosition};
+  close(c.x,at.x+(e.origin.x-at.x)*rule.firstStemIntensity);
+  close(c.y,at.y+(e.origin.y-at.y)*rule.firstStemIntensity);
 });
 
-test('signed E and C retain opposite area effects during local blade development',()=>{
- const p=clone('Walnut');p.stages[1].cycles=1;p.stages[2].cycles=0;
- const base=generate(p).steps.filter(s=>s.stage===1).at(-1);
- const values={};
- for(const intensity of [-.3,0,.3]){
-  const v=structuredClone(p);v.stages[1].expansion.intensity=intensity;v.stages[1].contraction.intensity=0;
-  values[intensity]=area(generate(v).steps.find(s=>s.stage===2&&s.operation==='E'));
- }
- assert.ok(values[-.3]<area(base));assert.ok(Math.abs(values[0]-area(base))<1e-9);assert.ok(values[.3]>area(base));
- for(const intensity of [-.3,0,.3]){
-  const v=structuredClone(p);v.stages[1].contraction.intensity=intensity;
-  const s=generate(v).steps.slice(-2),difference=area(s[1])-area(s[0]);
-  if(intensity===0)assert.ok(Math.abs(difference)<1e-9);else assert.ok(difference*intensity<0);
- }
+test('dormant shoot edges retain their points and blades begin locally',()=>{
+  const p=PRESETS[0],early=buildLeaf(p,[2,0]),later=buildLeaf(p,[6,0]);
+  assert.ok(early.dormantCount>0);
+  for(const a of early.points){const b=later.points.find(p=>p.id===a.id);assert.ok(b);xy(b,[a.x,a.y]);}
+  const all=buildLeaf(p),firstBlade=all.events.findIndex(e=>e.phase===1);
+  assert.ok(firstBlade>=0&&all.events.slice(firstBlade+1).some(e=>e.phase===0));
 });
 
-test('all six local E/C controls independently change geometry without rewriting earlier steps',()=>{
- const p=clone('Walnut');p.stages[1].cycles=1;p.stages[2].cycles=0;
- const original=generate(p).steps;
- for(const operation of ['expansion','contraction'])for(const parameter of ['position','intensity','rotation']){
-  const v=structuredClone(p);v.stages[1][operation][parameter]+=parameter==='rotation'?15:.15;
-  const result=generate(v).steps,index=result.length-(operation==='expansion'?2:1);
-  assert.notDeepEqual(coordinates(result[index]),coordinates(original[index]),`${operation}.${parameter}`);
-  assert.deepEqual(result.slice(0,index),original.slice(0,index),'Earlier snapshots must remain independent');
- }
+test('source bounds retain negative C in the definitions that permit it',()=>{
+  const ash=structuredClone(PRESETS.find(p=>p.name==='American ash'));
+  ash.stages[0].intensities[1]=-.4;
+  assert.ok(buildLeaf(ash,[2,0]).events.some(e=>e.operation==='C'&&e.intensity<0));
+  const buttercup=structuredClone(PRESETS[0]);buttercup.stages[0].intensities[1]=-.4;
+  assert.ok(buildLeaf(buttercup,[2,0]).events.filter(e=>e.operation==='C').every(e=>e.intensity>=0));
 });
 
-test('profile, spacing and rotation schedules act without changing shoot count',()=>{
- assert.equal(profileAt([.2,1,.4],0),.2);assert.equal(profileAt([.2,1,.4],.5),1);assert.equal(profileAt([.2,1,.4],1),.4);
- for(const name of ['Walnut','Buttercup'])for(const key of ['profile','spacing','tipRotation']){
-  const p=clone(name),before=framework(p);
-  if(key==='profile')p.growth.profile[1]*=.6;else p.growth[key]+=key==='spacing'?.5:15;
-  const after=framework(p);assert.equal(after.axes.length,before.axes.length);assert.notDeepEqual(after.axes,before.axes,`${name}: ${key}`);
- }
+test('rounding changes the drawing without changing recursion',()=>{
+  const p=structuredClone(PRESETS[0]),a=buildLeaf(p);
+  p.negativeWeight=.1;p.positiveWeight=9;
+  const b=buildLeaf(p);assert.deepEqual(a.points,b.points);assert.notDeepEqual(a.surfaces,b.surfaces);
+  p.rounding=false;assert.deepEqual(buildLeaf(p).surfaces[0],a.controlPoints);
 });
 
-test('regional growth leaves unselected lower shoots untouched',()=>{
- const p=clone('Walnut');p.stages[1].cycles=2;p.stages[1].target='upper';p.stages[2].cycles=0;
- const steps=generate(p).steps,early=steps.filter(s=>s.stage===1).at(-1),final=steps.at(-1);
- // Subdivision may add collinear points, so compare area of the lowest leaflet.
- assert.ok(Math.abs(area({surfaces:[early.surfaces[0]]})-area({surfaces:[final.surfaces[0]]}))<1e-10);
- assert.notEqual(area(early),area(final));
+test('extended schedules hold each parity and skipped phases remain valid',()=>{
+  assert.equal(scheduleAt([.1,.2,.3,.4],7),.4);assert.equal(scheduleAt([.1,.2,.3,.4],6),.3);
+  const p=structuredClone(PRESETS[0]);p.stages[0].cycles=0;
+  assert.ok(generate(p).steps.every(s=>s.stage===2));
+  p.stages[1].cycles=0;assert.equal(generate(p).steps.length,0);
 });
 
-test('cycle decay changes later growth while keeping the first cycle identical',()=>{
- const p=clone('Walnut');p.stages[1].decay=1;const full=generate(p).steps;
- p.stages[1].decay=.2;const decayed=generate(p).steps;
- assert.deepEqual(full.filter(s=>s.stage===2&&s.cycle===1),decayed.filter(s=>s.stage===2&&s.cycle===1));
- assert.notDeepEqual(coordinates(full.at(-1)),coordinates(decayed.at(-1)));
+test('point budget stops excessive recursion with complete frames',()=>{
+  const p=structuredClone(PRESETS.find(p=>p.name==='Fern'));
+  p.stages.forEach(s=>{s.cycles=20;s.minExpansionLength=0;s.minContractionLength=0;});
+  const result=generate(p);assert.ok(result.stops.length);assert.ok(result.steps.every(s=>s.pointCount<=MAX_POINTS));
 });
 
-test('fern secondary shoots appear in the blade stage with parent identities',()=>{
- const steps=generate(clone('Fern')).steps;
- assert.ok(steps.filter(s=>s.stage===1).every(s=>s.branches.every(b=>!b.parent)));
- const first=steps.find(s=>s.stage===2),last=steps.filter(s=>s.stage===2).at(-1);
- assert.ok(first.branches.some(b=>b.parent));
- assert.ok(last.branches.filter(b=>b.parent).length>first.branches.filter(b=>b.parent).length);
-});
-
-test('skipped stages and a zero seed never display an axis-only operation',()=>{
- const p=clone('Walnut');p.stages.forEach(s=>s.cycles=0);assert.equal(generate(p).steps.length,0);
- p.stages[2].cycles=1;const result=generate(p);assert.equal(result.steps[0].stage,3);assert.equal(result.steps[0].operation,'E');assert.ok(area(result.steps[0])>0);
- p.stages[0].expansion.intensity=0;assert.equal(generate(p).steps.length,0);
-});
-
-test('signed displacement is neutral at zero and rotation steers the reference vector',()=>{
- assert.deepEqual(displace({x:1,y:2},{x:3,y:0},0,45),{x:1,y:2});
- assert.deepEqual(displace({x:0,y:0},{x:1,y:0},-2,0),{x:-2,y:0});
- const p=displace({x:0,y:0},{x:1,y:0},1,90);assert.ok(Math.abs(p.x)<1e-12&&Math.abs(p.y-1)<1e-12);
-});
-
-test('atlas exports every operation and both developmental stage boundaries',()=>{
- const rows=atlasRows(PRESETS),html=atlasTable(rows),svg=atlasSvg(rows),total=rows.reduce((n,r)=>n+r.steps.length,0);
- assert.equal((html.match(/class="atlas-step-label"/g)||[]).length,total);
- assert.equal((svg.match(/id="sheet-\d+-\d+"/g)||[]).length,total);
- assert.match(html,/stage-2/);assert.match(html,/stage-3/);assert.match(svg,/#a98339/);
- for(const output of [html,svg]){assert.doesNotMatch(output,/Seed axis|NaN|Infinity/);const ids=[...output.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length);}
-});
-
-test('extreme signed controls and dense secondary branching remain bounded',()=>{
- for(const name of ['Buttercup','Walnut','Fern'])for(const intensity of [-1.5,1.5]){
-  const p=clone(name);p.growth.shoots=18;p.growth.secondaryPairs=p.growth.family==='compound'?7:0;
-  p.stages[0].cycles=4;
-  for(const s of p.stages.slice(1)){s.cycles=4;s.minLength=.005;s.expansion.intensity=intensity;s.contraction.intensity=-intensity;s.expansion.rotation=85;s.contraction.rotation=-80;}
-  const result=generate(p);assert.ok(result.steps.length>0);
-  for(const s of result.steps){assert.ok(s.pointCount<=4096,`${name}: ${s.pointCount}`);for(const points of s.surfaces){assert.ok(isSimple(points));for(const p of points)assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));}}
- }
+test('atlas includes all sixteen source sequences without mutating recipes',()=>{
+  const before=JSON.stringify(PRESETS),rows=atlasRows(PRESETS),table=atlasTable(rows),svg=atlasSvg(rows);
+  assert.equal(rows.length,16);assert.equal(JSON.stringify(PRESETS),before);
+  for(const row of rows){assert.ok(table.includes(row.params.name));assert.ok(svg.includes(row.params.name));}
+  assert.equal((table.match(/data-step=/g)||[]).length,rows.reduce((n,r)=>n+r.steps.length+1,0));
 });
