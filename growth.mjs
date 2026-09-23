@@ -1,7 +1,7 @@
 // Port of the supplied Grasshopper Leaf / EXP / CON recursion.
 // Per-file differences are data (thresholds, stem rules, vector mode), not species branches.
 import {lerp,distance,displace} from './geometry.mjs';
-import {bladeBoundary,roundedPoint} from './blade.mjs?v=rhino-2';
+import {bladeBoundary,roundedPoint} from './blade.mjs?v=studio-1';
 export {isSimple} from './geometry.mjs';
 export const STAGES=['Shoots','Blades'];
 export const MAX_POINTS=12000;
@@ -16,7 +16,7 @@ export function scheduleAt(values,g) {
   return values[last-((last-g)%2!==0?1:0)]??values[0]??0;
 }
 
-export function buildLeaf(params,limits=params.stages.map(s=>Math.round(s.cycles*2))) {
+export function buildLeaf(params,limits=params.stages.map(s=>Math.round(s.cycles*2)),draw=true) {
   const points=[],connectors=[],terminals=[],events=[];
   const variant=params.variant,radial=params.trajectory==='base';
   function point(loc,positive,origin,id,phase=-1,g=-1) {
@@ -65,8 +65,8 @@ export function buildLeaf(params,limits=params.stages.map(s=>Math.round(s.cycles
       if(variant.connectOrigins)connectors.push({a:xy(a.origin),b:xy(center),depth:phase+1});
       b.origin=xy(center);
       events.push({operation,phase,g,position,intensity,center:xy(center),point:p.id});
-      leaf(p,a,axis(center,a),false,g+1,center,-dir,enabled&&(phase===0?radial:params.bladeContinue),phase,rPol,rInt,path+'.0');
-      leaf(p,b,axis(center,b),false,g+1,center,dir,enabled&&(phase===0?!radial:params.bladeContinue),phase,1-rPol,1-rInt,path+'.1');
+      leaf(p,a,axis(center,a),false,g+1,center,-dir,phase===0&&enabled&&radial,phase,rPol,rInt,path+'.0');
+      leaf(p,b,axis(center,b),false,g+1,center,dir,phase===0&&enabled&&!radial,phase,1-rPol,1-rInt,path+'.1');
     } else {
       // On a negative endpoint the source uses a separate stem position/intensity.
       const at=lerp(a,b,b.polarity>0?position:rule.stemPosition);
@@ -85,22 +85,29 @@ export function buildLeaf(params,limits=params.stages.map(s=>Math.round(s.cycles
   const serial=p=>({...xy(p),id:p.id,polarity:p.polarity,origin:xy(p.origin),phase:p.phase,g:p.g});
   const ordered=[];
   for(let p=A;p;p=p.right){ordered.push(p);if(ordered.length>points.length)throw new Error('Invalid boundary linkage.');}
-  const controlPoints=ordered.map(serial),branches=[{a:base,b:tip,depth:0},...connectors];
-  for(const p of points)if(p.polarity>0&&p.left&&p.right) {
-    const atControl=variant.veinAtControlPoint||(variant.veinFollowsRounding&&!params.rounding);
-    branches.push({id:p.id,a:xy(p.origin),b:atControl?xy(p):roundedPoint(p,p.left,p.right,{...params,roundPosition:.5}),depth:p.phase+1});
-  }
+  const controlPoints=ordered.map(serial),axes=[{a:base,b:tip,depth:0},...connectors];
   const edges=terminals.map(t=>({id:[t.a.id,t.b.id].sort().join('/'),a:serial(t.a),b:serial(t.b),active:t.active,phase:t.phase,operation:t.operation}));
-  return {points:points.map(serial),controlPoints,edges,branches,events,
-    surfaces:[bladeBoundary(controlPoints,params)],pointCount:points.length,
+  const result={points:points.map(serial),controlPoints,edges,axes,events,pointCount:points.length,
     activeCount:edges.filter(e=>e.active).length,dormantCount:edges.filter(e=>!e.active).length,limits:[...limits]};
+  return draw?drawLeaf(result,params):result;
 }
 
-export function generateGrowth(params) {
+export function drawLeaf(frame,params) {
+  const {controlPoints}=frame,indices=new Map(controlPoints.map((p,i)=>[p.id,i]));
+  const branches=[...frame.axes],variant=params.variant;
+  for(const p of frame.points)if(p.polarity>0){
+    const i=indices.get(p.id);if(i===0||i===controlPoints.length-1)continue;
+    const atControl=variant.veinAtControlPoint||(variant.veinFollowsRounding&&!params.rounding);
+    branches.push({id:p.id,a:xy(p.origin),b:atControl?xy(p):roundedPoint(p,controlPoints[i-1],controlPoints[i+1],{...params,roundPosition:.5}),depth:p.phase+1});
+  }
+  return {...frame,branches,surfaces:[bladeBoundary(controlPoints,params)]};
+}
+
+export function generateGrowth(params,{draw=true}={}) {
   const steps=[],stops=[],limits=params.stages.map(s=>Math.max(0,Math.min(40,Math.round(s.cycles*2))));
   for(let phase=0;phase<2;phase++)for(let depth=1;depth<=limits[phase];depth++) {
     try {
-      const frame=buildLeaf(params,phase===0?[depth,0]:[limits[0],depth]);
+      const frame=buildLeaf(params,phase===0?[depth,0]:[limits[0],depth],draw);
       if(!frame.events.length)continue;
       const operation=depth%2?'E':'C',g=depth-1,rule=params.stages[phase];
       steps.push({...frame,operation,stage:phase+1,cycle:Math.ceil(depth/2),

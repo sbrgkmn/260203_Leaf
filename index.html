@@ -2,14 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>260203_Leaf</title><link rel="stylesheet" href="style.css?v=rhino-2">
+<title>260203_Leaf</title><link rel="stylesheet" href="style.css?v=figure-2">
 </head>
 <body>
 <header><div><span class="eyebrow">260203_Leaf / FORM STUDIES</span><h1>Metamorphic leaves<span>.</span></h1></div><div class="header-actions"><p>Shoots, then blades.<br>One recursive boundary rule.</p><button id="openAtlas" class="primary-button">View all 16 leaf sequences &#8599;</button></div></header>
-<main>
+<nav class="studio-tabs" role="tablist" aria-label="Leaf workspace"><button id="paperTab" role="tab" aria-selected="true" aria-controls="workspace">Published studies</button><button id="labTab" role="tab" tabindex="-1" aria-selected="false" aria-controls="workspace">Variation lab</button><button id="chartTab" role="tab" tabindex="-1" aria-selected="false" aria-controls="chartPanel">Development chart</button></nav>
+<main id="workspace" role="tabpanel" aria-labelledby="paperTab">
 <section class="study">
-<div class="section-heading"><h2>16 starting forms</h2><span>Figure 7 / a&ndash;p</span></div>
+<div class="section-heading"><h2 id="catalogTitle">16 published studies</h2><span id="catalogCaption">Figure 7 / a&ndash;p</span></div>
 <div id="presets" class="presets" aria-label="Starting forms"></div>
+<section id="labTools" class="lab-tools" hidden><p>Explore narrow blades, lobed forms, fans, paired leaflets, and fronds. These are experimental shapes from the same E/C rules, not additional reconstructions from the paper.</p><div class="lab-actions"><label for="labBase">Start from a published form <select id="labBase"></select></label><button id="exploreNeighbors">Explore 9 nearby forms</button></div><p class="hint">The grid varies spread across columns and fullness across rows, using one scale. Select a candidate to continue its full sequence.</p><div id="candidateGrid" class="candidate-grid"></div></section>
 <div class="section-heading sequence-heading"><h2>Development sequence</h2><span id="sequenceSummary" aria-live="polite"></span></div>
 <p class="hint">Start at 01 / Expansion. Select any step to inspect it. All steps share the same scale.</p>
 <section class="paper-reading"><strong id="paperReference"></strong><p id="paperObservation"></p><p id="paperRecipe"></p><details id="comparePaper"><summary>Compare with the paper</summary><div id="paperComparison"></div></details></section><div id="steps"></div><p id="stopReason" class="hint"></p>
@@ -21,15 +23,21 @@
 </section>
 <aside>
 <section class="preview-panel"><div class="section-heading"><h2 id="previewTitle">Selected form</h2><span id="previewCode"></span></div><div id="preview"></div><p id="stepDirection" class="direction-readout"></p><p id="frontierSummary" class="hint"></p><div class="playback"><button id="previous" aria-label="Previous step">&#8592;</button><button id="play">Play sequence</button><button id="next" aria-label="Next step">&#8594;</button><button id="last">Final</button></div></section>
-<section class="control-panel"><div class="section-heading"><h2>Development rules</h2><button id="reset" class="text-button">Reset this leaf</button></div><label class="select-label" for="trajectory">Shoot trajectory</label><select id="trajectory"><option value="base">Radial / around a shared origin</option><option value="tip">Linear / toward the apex</option></select><div id="stageControls"></div></section>
+<section class="control-panel"><div class="section-heading"><h2>Shape controls</h2><button id="reset" class="text-button">Reset this leaf</button></div><p class="hint">Offsets from this form. Zero keeps its saved settings. Exact-rule edits establish a new starting point for these controls.</p><div id="macroControls"></div><details class="exact-controls"><summary>Exact E/C rules</summary><label class="select-label" for="trajectory">Shoot trajectory</label><select id="trajectory"><option value="base">Radial / around a shared origin</option><option value="tip">Linear / toward the apex</option></select><div id="stageControls"></div></details></section>
 <section class="control-panel"><h2>Drawing</h2><div id="drawingControls"></div><label class="check"><input id="veins" type="checkbox" checked> White axis & branches</label><label class="check"><input id="points" type="checkbox"> Show polar control points</label><label class="check"><input id="frontier" type="checkbox"> Show active / dormant edges</label></section>
 <section class="exports"><button id="exportPng">Export selected PNG</button><button id="exportSheet">Export steps PNG</button><button id="exportSvg">Export selected SVG</button><span id="exportStatus" role="status"></span></section>
 </aside>
 </main>
+<section id="chartPanel" role="tabpanel" aria-labelledby="chartTab" hidden>
+<div class="chart-heading"><div><span class="eyebrow">FIGURE 6 / DEVELOPMENT STUDIES</span><h2>Sixteen leaves, one complete figure.</h2><p>Read each row left to right. Original step numbers reveal skipped similar states. The Figure 6 order is followed, with Buttercup and White oak added below.</p></div><div class="chart-actions"><label for="chartCount">Frames per leaf <select id="chartCount"><option value="12">12</option><option value="16">16</option><option value="20">20</option></select></label><label for="chartZoom">Zoom <input id="chartZoom" type="range" min="60" max="180" step="10" value="100"><output id="chartZoomValue">100%</output></label><button id="chartExportSvg">Export figure SVG</button><button id="chartExportPng">Export figure PNG</button></div></div>
+<p class="chart-note">E / C columns show genuine expansion and contraction steps. Short sequences develop additional branches and blades, so chart forms may diverge from the published studies. Number gaps indicate omitted cycles. Every row uses one fixed scale; a thin divider marks the blade phase.</p>
+<p id="chartSummary" role="status"></p><span id="chartExportStatus" role="status"></span>
+<div class="chart-viewport"><div id="chartFigure"></div></div>
+</section>
 <dialog id="atlas" aria-labelledby="atlasTitle">
 <div class="atlas-header"><div><span class="eyebrow">METAMORPHIC LEAVES / COMPARATIVE ATLAS</span><h2 id="atlasTitle">Sixteen leaves. Every E/C cycle.</h2><p>Read each row left to right. Select a form to edit it. Your current leaf settings are included.</p></div><button id="closeAtlas" aria-label="Close leaf atlas">Close &#215;</button></div>
 <div class="atlas-toolbar"><span><b>E</b> Expansion &nbsp; <b>C</b> Contraction &nbsp; <i class="stage-key"></i> Blades</span><label for="atlasZoom">Cell size <input id="atlasZoom" type="range" min="12" max="180" step="1" value="96"><output id="atlasZoomValue" for="atlasZoom">96px</output></label><button id="fitAtlas">Fit all columns</button><button id="exportAtlas">Export atlas SVG</button><span id="atlasStatus" role="status"></span></div>
 <div id="atlasContent" class="atlas-content"></div>
 </dialog>
-<script type="module" src="app.mjs?v=rhino-2"></script>
+<script type="module" src="app.mjs?v=figure-2"></script>
 </body></html>

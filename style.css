@@ -515,3 +515,33 @@ aside {
 .schedule-table {width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums;margin:10px 0}
 .schedule-table th,.schedule-table td {text-align:right;padding:4px;border-bottom:1px solid #ddd}
 .schedule-table th:first-child,.schedule-table td:first-child {text-align:left}
+.studio-tabs {display:flex;gap:6px;padding:0 32px 16px;max-width:1800px;margin:auto}
+.studio-tabs button {padding:10px 20px;border:1px solid var(--line);background:white}
+.studio-tabs [aria-selected="true"] {background:#283326;color:white;border-color:#283326}
+.lab-tools {margin:22px 0;padding:18px;background:#edf0e7;border:1px solid var(--line);border-radius:10px}
+.lab-tools[hidden],[hidden] {display:none!important}
+.lab-tools p {font-size:12px;line-height:1.6}
+.lab-actions {display:flex;align-items:end;gap:16px;flex-wrap:wrap}
+.lab-actions label {font-size:12px;flex:1;min-width:180px}
+.lab-actions select {display:block;width:100%;margin-top:6px;padding:9px}
+.lab-actions button {padding:12px;background:#283326;color:white}
+.candidate-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.candidate {background:white;padding:8px;text-align:left;border:1px solid #ccd2c7;min-width:0}
+.candidate svg {width:100%;height:auto;display:block}
+.candidate b,.candidate small {display:block;font-size:11px;margin-top:5px}
+.candidate small {color:var(--muted)}
+.exact-controls {margin-top:22px;border-top:1px solid var(--line);padding-top:14px}
+.exact-controls summary {cursor:pointer;font-size:12px;font-weight:600;margin-bottom:14px}
+@media(max-width:700px){.studio-tabs{padding:0 16px 14px}.studio-tabs button{padding:10px 12px}.candidate-grid{gap:4px}.candidate b{font-size:9px}}
+#chartPanel {padding:12px 32px 36px;max-width:1800px;margin:auto}
+.chart-heading {display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap}
+.chart-heading h2 {font-size:25px;margin:10px 0}
+.chart-heading p,.chart-note,#chartSummary {font-size:12px;line-height:1.6;color:#62685c;max-width:950px}
+.chart-actions {display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.chart-actions label {display:flex;align-items:center;gap:8px;font-size:12px}
+.chart-actions select {padding:7px}.chart-actions input {width:90px}
+.chart-actions button {font-size:12px}
+.chart-viewport {overflow:auto;background:#e9ebe4;border:1px solid var(--line);padding:18px;margin-top:16px}
+#chartFigure {width:100%;margin:0 auto;background:white}
+.development-figure {display:block;width:100%;height:auto}
+@media(max-width:700px){#chartPanel{padding:8px 12px 24px}.studio-tabs{flex-wrap:wrap}.chart-viewport{padding:4px}.chart-heading h2{font-size:21px}}

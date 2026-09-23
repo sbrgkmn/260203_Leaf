@@ -1,4 +1,4 @@
-import {generate,frameFor,svgFor} from './leaf.mjs?v=rhino-2';
+import {generate,frameFor,svgFor} from './leaf.mjs?v=studio-1';
 
 export function atlasRows(studies) {
   return studies.map((params,index) => {

@@ -7,8 +7,9 @@ New-Item -ItemType Directory -Force tmp/rhino-pass | Out-Null
 & 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe' '/nologo' '/out:tmp\rhino-pass\InspectGh.exe' 'tools\grasshopper\InspectGh.cs'
 python -X utf8 tools/grasshopper/extract_all.py 'C:\path\to\GENERATED'
 python -X utf8 tools/grasshopper/build_recipes.py
+node tools/compact-recipes.mjs
 python -X utf8 tools/grasshopper/oracle.py
-node --test leaf.test.mjs
+node --test leaf.test.mjs studio.test.mjs
 ```
 
 `extract_all.py` reads `.gh` archives and their `final` subfolder without running Grasshopper components. `graph.py` resolves component IDs and connections. `evaluate_graph.py` evaluates the connected numeric subset: sliders, toggles, domains, ranges, arithmetic, lists, and saved cubic Bézier Graph Mapper curves. Unsupported connected components raise an error. It is deliberately not a general Grasshopper interpreter.

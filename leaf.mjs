@@ -1,7 +1,7 @@
-import {generateGrowth} from './growth.mjs?v=rhino-2';
-export {PRESETS} from './presets.mjs?v=rhino-2';
+import {createGenerator} from './generator.mjs?v=studio-1';
+export {PRESETS} from './presets.mjs?v=studio-1';
 export {lerp,distance,displace} from './geometry.mjs';
-export const generate=generateGrowth;
+export const generate=createGenerator();
 export const boundary=step=>step.surfaces.flat();
 export function frameFor(steps) {
   let extent=.1,minY=0,maxY=10;

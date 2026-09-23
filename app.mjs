@@ -1,8 +1,14 @@
-import { PRESETS, generate, frameFor, svgFor } from './leaf.mjs?v=rhino-2';
-import { atlasRows, atlasTable, atlasSvg } from './atlas.mjs?v=rhino-2';
-import { STAGES } from './growth.mjs?v=rhino-2';
+import { PRESETS, generate, frameFor, svgFor } from './leaf.mjs?v=studio-1';
+import { atlasRows, atlasTable, atlasSvg } from './atlas.mjs?v=studio-1';
+import { STAGES } from './growth.mjs?v=studio-1';
+import {VARIATIONS,NEUTRAL,MACRO_FIELDS,varyRecipe,neighboringVariations} from './variations.mjs?v=studio-1';
+import {studyParams} from './presets.mjs?v=studio-1';
+import {chartRows,figureSvg} from './figure-chart.mjs?v=figure-2';
 const $ = id => document.getElementById(id);
-const studies = PRESETS.map(p => ({ ...structuredClone(p), veins: true, points: false }));
+const editable=studyParams;
+const collection=source=>({source,studies:source.map(editable),anchors:source.map(editable),controls:source.map(()=>({...NEUTRAL})),index:0});
+const collections={paper:collection(PRESETS),lab:collection(VARIATIONS)};
+let mode='paper',studies=collections.paper.studies,candidates=[];
 let presetIndex = 0, params, steps = [], frame, selected = 0, timer = null, pending = false;
 const operationFields = [
   ['position', 'Position scale', 0, 2, .01],
@@ -13,6 +19,9 @@ const help = {
   contraction: ['Scale the saved C positions along each boundary edge.', 'Scale the saved C strengths. Negative values are retained where the original definition permits them. Negative endpoints use the separate stem rule.'],
 };
 function format(id, value) {
+  if(id==='macro-origin')return `${value>0?'+':''}${Number(value).toFixed(3)}`;
+  if(id==='macro-fullness')return `${value>0?'+':''}${Number(value).toFixed(2)}`;
+  if(id.startsWith('macro-')&&id!=='macro-roundness')return `${value>0?'+':''}${Number(value).toFixed(1)}${id==='macro-spread'?'°':''}`;
   if (id.includes('cycles')) return String(value);
   if (id.includes('rotation')) return `${value} deg`;
   if (id.includes('intensity')) return `${Number(value)>0?'+':''}${Number(value).toFixed(2)}`;
@@ -21,11 +30,12 @@ function format(id, value) {
 function slider(id, label, min, max, increment, value, title = '') {
   return `<label class="slider" for="${id}" title="${title}"><span class="slider-heading"><span>${label}</span><output for="${id}" id="${id}Value">${format(id,value)}</output></span><input id="${id}" type="range" min="${min}" max="${max}" step="${increment}" value="${value}"></label>`;
 }
-function renderControls() {
+function renderControls(preserveMacros=false) {
+  if(!preserveMacros)renderMacros();
   $('trajectory').value=params.trajectory;
   $('paperReference').textContent=params.reference+' / '+params.source;
   $('paperObservation').textContent=params.observation;
-  $('paperRecipe').textContent=params.recipe;
+  $('paperRecipe').textContent=params.recipe+(params.sourceKey==='oak'&&params.rounding?' Boundary smoothing is enabled; the source growth rules are unchanged.':'');
   $('stageControls').innerHTML=params.stages.map((rule,i)=>`
     <fieldset class="stage-control"><legend>0${i+1} / ${STAGES[i]}</legend>
     <p class="stage-note">${i?'Each finished shoot edge starts its own blade recursion.':'Radial or linear continuation selects which descendant edges develop.'}</p>
@@ -45,8 +55,30 @@ function renderControls() {
     ${rule.minContractionLength===null?'':slider(`s${i}-minContractionLength`,'C minimum edge length',0,5,.01,rule.minContractionLength)}
     <details><summary>Original generation values</summary><table class="schedule-table"><thead><tr><th>Step</th><th>Position</th><th>Intensity</th></tr></thead><tbody>${rule.positions.map((v,g)=>`<tr><td>${g+1} / ${g%2?'C':'E'}</td><td>${v.toFixed(4)}</td><td>${rule.intensities[g]?.toFixed(4)??'—'}</td></tr>`).join('')}</tbody></table></details></details>
     </fieldset>`).join('');
-  $('drawingControls').innerHTML=`<label class="check"><input id="rounding" type="checkbox" ${params.rounding?'checked':''}> Rounded blade boundary</label>`+slider('positiveWeight','Positive pole weight',0,20,.01,params.positiveWeight)+slider('negativeWeight','Negative pole weight',0,20,.01,params.negativeWeight);
+  $('drawingControls').innerHTML=`<details><summary>Exact margin weights</summary><label class="check"><input id="rounding" type="checkbox" ${params.rounding?'checked':''}> Rounded blade boundary</label>`+slider('positiveWeight','Positive pole weight',0,20,.01,params.positiveWeight)+slider('negativeWeight','Negative pole weight',0,20,.01,params.negativeWeight)+'</details>';
   for(const key of ['veins','points','frontier'])$(key).checked=!!params[key];
+}
+function renderMacros() {
+  const values=collections[mode].controls[presetIndex];
+  $('macroControls').innerHTML=MACRO_FIELDS.map(([key,label,min,max,increment,title])=>slider(`macro-${key}`,label,min,max,increment,values[key],title)).join('');
+}
+function switchMode(next) {
+  pause();
+  for(const name of ['paper','lab','chart']){
+    $(name+'Tab').setAttribute('aria-selected',String(name===next));$(name+'Tab').tabIndex=name===next?0:-1;
+  }
+  $('workspace').hidden=next==='chart';$('chartPanel').hidden=next!=='chart';
+  if(next==='chart'){renderFigure();return;}
+  pause();collections[mode].index=presetIndex;mode=next;studies=collections[mode].studies;
+  $('paperTab').setAttribute('aria-selected',String(mode==='paper'));
+  $('labTab').setAttribute('aria-selected',String(mode==='lab'));
+  $('paperTab').tabIndex=mode==='paper'?0:-1;$('labTab').tabIndex=mode==='lab'?0:-1;
+  $('workspace').setAttribute('aria-labelledby',mode==='paper'?'paperTab':'labTab');
+  $('labTools').hidden=mode!=='lab';$('comparePaper').hidden=mode!=='paper';
+  $('catalogTitle').textContent=mode==='paper'?'16 published studies':'Variation studies';
+  $('catalogCaption').textContent=mode==='paper'?'Figure 7 / a–p':'Same rules / new forms';
+  $('presets').innerHTML=studies.map(presetButton).join('');
+  loadPreset(collections[mode].index);
 }
 function presetButton(preset, i) {
   const sample = generate(preset).steps;
@@ -55,6 +87,8 @@ function presetButton(preset, i) {
 }
 function loadPreset(index) {
   pause(); presetIndex = index; params = studies[index];
+  $('candidateGrid').innerHTML='';candidates=[];
+  if(mode==='lab')$('labBase').value=params.parent??'Magnolia';
   renderControls(); render(true);
   document.querySelectorAll('.preset').forEach((b,i) => b.setAttribute('aria-pressed', String(i === index)));
 }
@@ -79,7 +113,7 @@ function render(final = false) {
   $('sequenceSummary').textContent = `${steps.length} operations / ${params.name}`;
   $('stopReason').textContent = result.stops.join(' ');
   const slug=params.name.toLowerCase().replaceAll(' ','-');
-  $('paperComparison').innerHTML=`<div class="reference-pair"><figure><img src="references/${slug}-final.png" alt="Published ${params.name}, Figure 7" loading="lazy"><figcaption>Published / Figure 7</figcaption></figure><figure>${steps.length?svgFor(steps.at(-1),params,frame,'reference-current'):'No surface'}<figcaption>Saved definition / current settings</figcaption></figure></div><p>The saved definition and the publication may represent different revisions. Every saved E/C step is shown here; the paper sometimes omits intermediate steps.</p><div class="reference-series"><img src="references/${slug}-series.png" alt="Published E/C development series for ${params.name}" loading="lazy"></div><p>${params.reference} · Sabri Gokmen, <i>Metamorphic Leaves</i> (2020).</p>`;
+  $('paperComparison').innerHTML=mode==='lab'?'':`<div class="reference-pair"><figure><img src="references/${slug}-final.png" alt="Published ${params.name}, Figure 7" loading="lazy"><figcaption>Published / Figure 7</figcaption></figure><figure>${steps.length?svgFor(steps.at(-1),params,frame,'reference-current'):'No surface'}<figcaption>Saved definition / current settings</figcaption></figure></div><p>The saved definition and the publication may represent different revisions. Every saved E/C step is shown here; the paper sometimes omits intermediate steps.</p><div class="reference-series"><img src="references/${slug}-series.png" alt="Published E/C development series for ${params.name}" loading="lazy"></div><p>${params.reference} · Sabri Gokmen, <i>Metamorphic Leaves</i> (2020).</p>`;
   let html = '', lastStage = -1;
   steps.forEach((step,i) => {
     if (step.stage !== lastStage) {
@@ -101,7 +135,10 @@ $('steps').addEventListener('click', event => {
 });
 document.querySelector('aside').addEventListener('input', event => {
   const {id, value, checked} = event.target;
-  if (/^s[01]-/.test(id)) {
+  if(id.startsWith('macro-')){
+    const state=collections[mode];state.controls[presetIndex][id.slice(6)]=Number(value);
+    params=studies[presetIndex]=varyRecipe(state.anchors[presetIndex],state.controls[presetIndex]);
+  } else if (/^s[01]-/.test(id)) {
     const [stage,key,parameter] = id.split('-'), rule = params.stages[Number(stage[1])];
     if (parameter) rule[key][parameter] = Number(value); else rule[key] = Number(value);
   } else if(id==='trajectory'){params.trajectory=value;renderControls();}
@@ -109,18 +146,26 @@ document.querySelector('aside').addEventListener('input', event => {
   else if(['positiveWeight','negativeWeight'].includes(id))params[id]=Number(value);
   else if(['veins','points','frontier','rounding'].includes(id))params[id]=checked;
   else return;
+  if(['veins','points','frontier'].includes(id))collections[mode].anchors[presetIndex][id]=checked;
+  else if(!id.startsWith('macro-')){
+    collections[mode].anchors[presetIndex]=structuredClone(params);
+    collections[mode].controls[presetIndex]={...NEUTRAL};renderMacros();
+  }
   if ($(id+'Value')) $(id+'Value').textContent = format(id,value);
   pause();
   if (!pending) {
     pending = true;
     requestAnimationFrame(() => {
-      pending = false; render();
+      pending = false;
+      if(id.startsWith('macro-'))renderControls(true);
+      render();$('candidateGrid').innerHTML='';candidates=[];
       document.querySelector(`[data-preset="${presetIndex}"]`).outerHTML = presetButton(params,presetIndex);
     });
   }
 });
 $('reset').onclick = () => {
-  studies[presetIndex] = {...structuredClone(PRESETS[presetIndex]), veins:true, points:false};
+  const state=collections[mode];studies[presetIndex]=editable(state.source[presetIndex]);
+  state.anchors[presetIndex]=structuredClone(studies[presetIndex]);state.controls[presetIndex]={...NEUTRAL};
   loadPreset(presetIndex);
   document.querySelector(`[data-preset="${presetIndex}"]`).outerHTML = presetButton(params,presetIndex);
 };
@@ -171,7 +216,7 @@ $('exportSvg').onclick = () => {
 };
 let atlasData = [];
 $('openAtlas').onclick = () => {
-  pause(); atlasData = atlasRows(studies);
+  pause(); atlasData = atlasRows(collections.paper.studies);
   $('atlasContent').innerHTML = atlasTable(atlasData);
   $('atlasStatus').textContent = '';
   $('atlas').showModal();
@@ -192,11 +237,70 @@ $('fitAtlas').onclick = () => {
 };
 $('atlasContent').onclick = event => {
   const button = event.target.closest('[data-study]'); if (!button) return;
-  $('atlas').close(); loadPreset(Number(button.dataset.study));
+  $('atlas').close();if(mode!=='paper')switchMode('paper');loadPreset(Number(button.dataset.study));
   if (button.dataset.step !== undefined) select(Number(button.dataset.step));
 };
 $('exportAtlas').onclick = () => {
   download(new Blob([atlasSvg(atlasData)],{type:'image/svg+xml'}),'metamorphic-leaves-16-sequences.svg');
   $('atlasStatus').textContent = 'Atlas SVG exported.';
+};
+$('paperTab').onclick=()=>switchMode('paper');
+$('labTab').onclick=()=>switchMode('lab');
+$('chartTab').onclick=()=>switchMode('chart');
+for(const tab of [$('paperTab'),$('labTab'),$('chartTab')])tab.onkeydown=event=>{
+  if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){
+    event.preventDefault();const names=['paper','lab','chart'],i=names.indexOf(tab.id.replace('Tab',''));
+    const next=event.key==='Home'?'paper':event.key==='End'?'chart':names[(i+(event.key==='ArrowRight'?1:2))%3];
+    switchMode(next);$(next+'Tab').focus();
+  }
+};
+$('labBase').innerHTML=PRESETS.map(p=>`<option>${p.name}</option>`).join('');
+$('labBase').onchange=event=>{
+  const source=PRESETS.find(p=>p.name===event.target.value),p=editable(source);
+  p.parent=source.name;p.name=source.name+' variation';p.source='Derived from '+source.name;
+  p.reference='Variation study';p.observation='Explore neighboring forms from this saved recipe.';
+  p.recipe='The published study remains available in the first tab.';
+  studies[presetIndex]=p;collections.lab.anchors[presetIndex]=structuredClone(p);collections.lab.controls[presetIndex]={...NEUTRAL};
+  loadPreset(presetIndex);$('presets').innerHTML=studies.map(presetButton).join('');
+};
+$('exploreNeighbors').onclick=()=>{
+  pause();candidates=neighboringVariations(params);
+  const results=candidates.map(p=>generate(p)),sharedFrame=frameFor(results.flatMap(r=>r.steps));
+  $('candidateGrid').innerHTML=candidates.map((p,i)=>{
+    const result=results[i],last=result.steps.at(-1);
+    return `<button class="candidate" data-candidate="${i}" ${!last||result.stops.length?'disabled':''}>${last?svgFor(last,p,sharedFrame,`candidate-${i}`):''}<b>${p.name}</b><small>${result.stops.length?'Growth limit reached':'Use this variation'}</small></button>`;
+  }).join('');
+};
+$('candidateGrid').onclick=event=>{
+  const button=event.target.closest('[data-candidate]');if(!button)return;
+  const chosen=structuredClone(candidates[Number(button.dataset.candidate)]);
+  chosen.name='Custom '+(chosen.parent??'leaf');studies[presetIndex]=chosen;
+  collections.lab.anchors[presetIndex]=structuredClone(chosen);collections.lab.controls[presetIndex]={...NEUTRAL};
+  loadPreset(presetIndex);$('presets').innerHTML=studies.map(presetButton).join('');
+};
+let currentFigure='';
+function renderFigure() {
+  const count=Number($('chartCount').value),rows=chartRows(collections.paper.studies,count);
+  currentFigure=figureSvg(rows,count);$('chartFigure').innerHTML=currentFigure;
+  const extended=rows.filter(r=>r.extended).length,skipped=rows.reduce((n,r)=>n+r.skipped,0),short=rows.filter(r=>r.shortfall).length;
+  $('chartSummary').textContent=`${rows.length} leaves / ${count} frames per leaf / ${skipped} computed states omitted / ${extended} leaves developed further${short?` / ${short} rows reached a growth limit`:""}`;
+  $('chartExportStatus').textContent='';
+}
+$('chartCount').onchange=renderFigure;
+$('chartZoom').oninput=event=>{
+  $('chartFigure').style.width=event.target.value+'%';$('chartZoomValue').textContent=event.target.value+'%';
+};
+$('chartExportSvg').onclick=()=>download(new Blob([currentFigure],{type:'image/svg+xml'}),'metamorphic-leaves-development-chart.svg');
+$('chartExportPng').onclick=async()=>{
+  $('chartExportPng').disabled=true;$('chartExportStatus').textContent='Preparing image…';
+  try {
+    const image=await raster(currentFigure),canvas=document.createElement('canvas');
+    canvas.width=image.naturalWidth*2;canvas.height=image.naturalHeight*2;
+    canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+    if(!blob)throw new Error('PNG encoding failed.');
+    download(blob,'metamorphic-leaves-development-chart.png');$('chartExportStatus').textContent='PNG exported.';
+  }catch(error){$('chartExportStatus').textContent=error.message;}
+  finally{$('chartExportPng').disabled=false;}
 };
 loadPreset(0);
