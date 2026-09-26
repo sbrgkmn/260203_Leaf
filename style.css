@@ -516,6 +516,7 @@ aside {
 .schedule-table th,.schedule-table td {text-align:right;padding:4px;border-bottom:1px solid #ddd}
 .schedule-table th:first-child,.schedule-table td:first-child {text-align:left}
 .studio-tabs {display:flex;gap:6px;padding:0 32px 16px;max-width:1800px;margin:auto}
+.studio-tabs {flex-wrap:wrap}
 .studio-tabs button {padding:10px 20px;border:1px solid var(--line);background:white}
 .studio-tabs [aria-selected="true"] {background:#283326;color:white;border-color:#283326}
 .lab-tools {margin:22px 0;padding:18px;background:#edf0e7;border:1px solid var(--line);border-radius:10px}
@@ -545,3 +546,34 @@ aside {
 #chartFigure {width:100%;margin:0 auto;background:white}
 .development-figure {display:block;width:100%;height:auto}
 @media(max-width:700px){#chartPanel{padding:8px 12px 24px}.studio-tabs{flex-wrap:wrap}.chart-viewport{padding:4px}.chart-heading h2{font-size:21px}}
+
+/* Explanatory plates use the engine's geometry, with a quiet monochrome drawing style. */
+.lesson {max-width:1480px;margin:auto;padding:18px 32px 48px}
+.lesson-heading h2 {font-size:29px;font-weight:500;margin:10px 0}
+.lesson-heading p {max-width:970px;font-size:14px;line-height:1.7;color:#58604f;margin-bottom:22px}
+.lesson-controls {display:flex;align-items:center;flex-wrap:wrap;gap:18px;padding:18px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:18px}
+.lesson-controls label,.lesson-controls button {font-size:12px}
+.lesson-controls select {padding:7px;margin-left:5px;max-width:220px}
+.lesson-controls .check {margin:0}
+.diagram-export-status {font-size:11px;color:#58604f}
+.diagram-export-status:empty {display:none}
+.lesson-range {display:block;min-width:175px;flex:1;max-width:260px;font-size:12px}
+.lesson-range>span {display:flex;justify-content:space-between;gap:16px}
+.lesson-range output {font-variant-numeric:tabular-nums;color:#59654b}
+.lesson-range input {width:100%;margin:12px 0 0;accent-color:#283326}
+.lesson-plot {overflow:auto;border:1px solid #dedfd8;background:white;margin:18px 0}
+.lesson-plot>svg {display:block;width:100%;height:auto;min-width:780px}
+.lesson-notes {display:grid;grid-template-columns:repeat(3,1fr);gap:30px;margin:26px 0}
+.lesson-notes h3 {font-size:15px;font-weight:600}
+.lesson-notes p,.lesson-details p,.lesson-caption {font-size:13px;line-height:1.7;color:#57604e}
+.lesson-caption a {color:#344e2f;text-underline-offset:3px}
+.lesson-details {padding:15px 0;border-top:1px solid var(--line);font-size:13px}
+.lesson-details summary {cursor:pointer;font-weight:600}
+.lesson-details .schedule-table {max-width:850px}
+.worked-inspector {display:grid;grid-template-columns:minmax(250px,420px) minmax(300px,1fr);gap:40px;align-items:center;margin:35px 0}
+#workedDetail {border:1px solid var(--line);background:white}
+#workedDetail svg {display:block;width:100%;height:auto}
+#workedReadout {font-size:14px;line-height:1.8;max-width:600px}
+.worked-inspector .lesson-range {max-width:100%;margin-top:22px}
+button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible {outline:2px solid #648443;outline-offset:3px}
+@media(max-width:750px){.lesson{padding:12px 16px 30px}.lesson-heading h2{font-size:23px}.lesson-notes,.worked-inspector{grid-template-columns:1fr;gap:16px}.lesson-controls{gap:14px}.lesson-range{min-width:140px}.studio-tabs button{flex:1;white-space:nowrap}.lesson-plot>svg{min-width:760px}.lesson-controls select{max-width:200px}}

@@ -29,13 +29,16 @@ test('variation controls are reversible and never modify their source',()=>{
   assert.notDeepEqual(generate(changed).steps.at(-1).points,generate(p).steps.at(-1).points);
   assert.deepEqual(varyRecipe(p,NEUTRAL),p);assert.equal(JSON.stringify(p),original);
 });
-test('all eight new forms are distinct, finite and complete',()=>{
+test('all sixteen parametric forms are distinct, finite and complete',()=>{
+  assert.equal(VARIATIONS.length,16);
   const shapes=new Set();
   for(const p of VARIATIONS){
     const r=generate(p);assert.deepEqual(r.stops,[]);assert.ok(r.steps.length);assert.equal(r.steps[0].operation,'E');
     const final=r.steps.at(-1);assert.ok(final.surfaces.flat().every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)));
     const shape=JSON.stringify(final.surfaces);assert.ok(!shapes.has(shape));shapes.add(shape);
-    const parent=PRESETS.find(q=>q.name===p.parent);assert.notEqual(shape,JSON.stringify(generate(parent).steps.at(-1).surfaces));
+    assert.equal(p.experiment,undefined);assert.ok(PRESETS.some(source=>source.name===p.parent));
+    assert.ok(r.steps.length>=4);
+    for(const source of PRESETS)assert.notEqual(shape,JSON.stringify(generate(source).steps.at(-1).surfaces));
   }
 });
 test('neighboring grid is deterministic and its center retains the selected geometry',()=>{

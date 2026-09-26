@@ -1,13 +1,16 @@
-import { PRESETS, generate, frameFor, svgFor } from './leaf.mjs?v=studio-1';
-import { atlasRows, atlasTable, atlasSvg } from './atlas.mjs?v=studio-1';
-import { STAGES } from './growth.mjs?v=studio-1';
-import {VARIATIONS,NEUTRAL,MACRO_FIELDS,varyRecipe,neighboringVariations} from './variations.mjs?v=studio-1';
+import { PRESETS, generate, frameFor, svgFor } from './leaf.mjs?v=pole-pairs-2';
+import { atlasRows, atlasTable, atlasSvg } from './atlas.mjs?v=pole-pairs-2';
+import { STAGES } from './growth.mjs?v=pole-pairs-2';
+import {VARIATIONS,NEUTRAL,MACRO_FIELDS,varyRecipe,neighboringVariations} from './variations.mjs?v=pole-pairs-2';
 import {studyParams} from './presets.mjs?v=studio-1';
-import {chartRows,figureSvg} from './figure-chart.mjs?v=figure-2';
+import {chartRows,figureSvg} from './figure-chart.mjs?v=pole-pairs-2';
+import {LEARNING_TABS,mountLearning} from './learning.mjs?v=pole-pairs-2';
+const showLearning=mountLearning();
+const TAB_NAMES=['paper','lab','chart',...LEARNING_TABS.map(([id])=>id)];
 const $ = id => document.getElementById(id);
 const editable=studyParams;
 const collection=source=>({source,studies:source.map(editable),anchors:source.map(editable),controls:source.map(()=>({...NEUTRAL})),index:0});
-const collections={paper:collection(PRESETS),lab:collection(VARIATIONS)};
+const collections={paper:collection(PRESETS),lab:{...collection(VARIATIONS),index:8}};
 let mode='paper',studies=collections.paper.studies,candidates=[];
 let presetIndex = 0, params, steps = [], frame, selected = 0, timer = null, pending = false;
 const operationFields = [
@@ -38,7 +41,7 @@ function renderControls(preserveMacros=false) {
   $('paperRecipe').textContent=params.recipe+(params.sourceKey==='oak'&&params.rounding?' Boundary smoothing is enabled; the source growth rules are unchanged.':'');
   $('stageControls').innerHTML=params.stages.map((rule,i)=>`
     <fieldset class="stage-control"><legend>0${i+1} / ${STAGES[i]}</legend>
-    <p class="stage-note">${i?'Each finished shoot edge starts its own blade recursion.':'Radial or linear continuation selects which descendant edges develop.'}</p>
+    <p class="stage-note">${i?(params.compound?'Each generated shoot axis receives the same local E/C recipe; the last cycle finishes its blade.':'Each finished shoot edge starts its own blade recursion.'):'Radial or linear continuation selects which descendant edges develop.'}</p>
     ${!i?slider('firstPosition','First E / blade origin',0,1,.001,rule.positions[0],'Position along the initial axis: 0 at the base, 1 at the tip. Sets the first branching origin and influences stalk length.'):''}
     ${slider(`s${i}-cycles`,'E / C cycles',0,20,.5,rule.cycles,'Half a cycle ends at E. Zero skips this phase.')}
     ${slider(`s${i}-rotation`,'E rotation',0,180,.001,rule.rotation,'The source usually multiplies this angle by 1 − axis position.')}
@@ -53,7 +56,7 @@ function renderControls(preserveMacros=false) {
     ${slider(`s${i}-stemIntensity`,'Later stem C strength',-1,1,.01,rule.stemIntensity)}
     ${slider(`s${i}-minExpansionLength`,'E minimum edge length',0,5,.01,rule.minExpansionLength)}
     ${rule.minContractionLength===null?'':slider(`s${i}-minContractionLength`,'C minimum edge length',0,5,.01,rule.minContractionLength)}
-    <details><summary>Original generation values</summary><table class="schedule-table"><thead><tr><th>Step</th><th>Position</th><th>Intensity</th></tr></thead><tbody>${rule.positions.map((v,g)=>`<tr><td>${g+1} / ${g%2?'C':'E'}</td><td>${v.toFixed(4)}</td><td>${rule.intensities[g]?.toFixed(4)??'—'}</td></tr>`).join('')}</tbody></table></details></details>
+    <details><summary>Generation values</summary><table class="schedule-table"><thead><tr><th>Step</th><th>Position</th><th>Intensity</th></tr></thead><tbody>${rule.positions.map((v,g)=>`<tr><td>${g+1} / ${g%2?'C':'E'}</td><td>${v.toFixed(4)}</td><td>${rule.intensities[g]?.toFixed(4)??'—'}</td></tr>`).join('')}</tbody></table></details></details>
     </fieldset>`).join('');
   $('drawingControls').innerHTML=`<details><summary>Exact margin weights</summary><label class="check"><input id="rounding" type="checkbox" ${params.rounding?'checked':''}> Rounded blade boundary</label>`+slider('positiveWeight','Positive pole weight',0,20,.01,params.positiveWeight)+slider('negativeWeight','Negative pole weight',0,20,.01,params.negativeWeight)+'</details>';
   for(const key of ['veins','points','frontier'])$(key).checked=!!params[key];
@@ -64,10 +67,12 @@ function renderMacros() {
 }
 function switchMode(next) {
   pause();
-  for(const name of ['paper','lab','chart']){
+  for(const name of TAB_NAMES){
     $(name+'Tab').setAttribute('aria-selected',String(name===next));$(name+'Tab').tabIndex=name===next?0:-1;
   }
-  $('workspace').hidden=next==='chart';$('chartPanel').hidden=next!=='chart';
+  $('workspace').hidden=!['paper','lab'].includes(next);$('chartPanel').hidden=next!=='chart';
+  for(const [name] of LEARNING_TABS)$(name+'Panel').hidden=name!==next;
+  if(LEARNING_TABS.some(([name])=>name===next)){showLearning(next);return;}
   if(next==='chart'){renderFigure();return;}
   pause();collections[mode].index=presetIndex;mode=next;studies=collections[mode].studies;
   $('paperTab').setAttribute('aria-selected',String(mode==='paper'));
@@ -75,20 +80,20 @@ function switchMode(next) {
   $('paperTab').tabIndex=mode==='paper'?0:-1;$('labTab').tabIndex=mode==='lab'?0:-1;
   $('workspace').setAttribute('aria-labelledby',mode==='paper'?'paperTab':'labTab');
   $('labTools').hidden=mode!=='lab';$('comparePaper').hidden=mode!=='paper';
-  $('catalogTitle').textContent=mode==='paper'?'16 published studies':'Variation studies';
-  $('catalogCaption').textContent=mode==='paper'?'Figure 7 / a–p':'Same rules / new forms';
+  $('catalogTitle').textContent=mode==='paper'?'16 published studies':`${VARIATIONS.length} parametric studies`;
+  $('catalogCaption').textContent=mode==='paper'?'Figure 7 / a–p':`E/C recipes / revised form studies`;
   $('presets').innerHTML=studies.map(presetButton).join('');
   loadPreset(collections[mode].index);
 }
 function presetButton(preset, i) {
   const sample = generate(preset).steps;
   const thumbnail = sample.length ? svgFor(sample.at(-1), preset, frameFor(sample), `preset-${i}`) : '<span class="empty-thumb">No cycles</span>';
-  return `<button class="preset" aria-label="${preset.name} starting form" aria-pressed="${i === presetIndex}" data-preset="${i}">${thumbnail}<span>${String.fromCharCode(97+i)} / ${preset.name}</span></button>`;
+  return `<button class="preset" aria-label="${preset.name} starting form" aria-pressed="${i === presetIndex}" data-preset="${i}">${thumbnail}<span>${mode==='lab'?17+i:String.fromCharCode(97+i)} / ${preset.name}</span></button>`;
 }
 function loadPreset(index) {
   pause(); presetIndex = index; params = studies[index];
   $('candidateGrid').innerHTML='';candidates=[];
-  if(mode==='lab')$('labBase').value=params.parent??'Magnolia';
+  if(mode==='lab')$('labBase').value=params.parent??params.name;
   renderControls(); render(true);
   document.querySelectorAll('.preset').forEach((b,i) => b.setAttribute('aria-pressed', String(i === index)));
 }
@@ -100,7 +105,7 @@ function select(index) {
   $('previewTitle').textContent = !step ? 'No operations' : selected === steps.length-1 ? 'Final form' : step.operation === 'E' ? 'Expansion' : 'Contraction';
   $('previewCode').textContent = step ? `${String(selected+1).padStart(2,'0')} / ${String(steps.length).padStart(2,'0')}` : '0 / 0';
   $('stepDirection').textContent = step ? `${STAGES[step.stage-1]} / ${step.operation} / schedule strength ${format('intensity',step.intensity)}` : '';
-  $('frontierSummary').textContent=step?`${step.activeCount} continuing / ${step.dormantCount} resting boundary edges`:'';
+  $('frontierSummary').textContent=step?(`${step.activeCount} continuing / ${step.dormantCount} resting boundary edges`):'';
   $('previous').disabled = !step || selected === 0;
   $('next').disabled = !step || selected === steps.length-1;
   $('play').disabled = steps.length < 2; $('last').disabled = !step;
@@ -138,6 +143,7 @@ document.querySelector('aside').addEventListener('input', event => {
   if(id.startsWith('macro-')){
     const state=collections[mode];state.controls[presetIndex][id.slice(6)]=Number(value);
     params=studies[presetIndex]=varyRecipe(state.anchors[presetIndex],state.controls[presetIndex]);
+
   } else if (/^s[01]-/.test(id)) {
     const [stage,key,parameter] = id.split('-'), rule = params.stages[Number(stage[1])];
     if (parameter) rule[key][parameter] = Number(value); else rule[key] = Number(value);
@@ -237,29 +243,28 @@ $('fitAtlas').onclick = () => {
 };
 $('atlasContent').onclick = event => {
   const button = event.target.closest('[data-study]'); if (!button) return;
-  $('atlas').close();if(mode!=='paper')switchMode('paper');loadPreset(Number(button.dataset.study));
+  $('atlas').close();switchMode('paper');loadPreset(Number(button.dataset.study));
   if (button.dataset.step !== undefined) select(Number(button.dataset.step));
 };
 $('exportAtlas').onclick = () => {
   download(new Blob([atlasSvg(atlasData)],{type:'image/svg+xml'}),'metamorphic-leaves-16-sequences.svg');
   $('atlasStatus').textContent = 'Atlas SVG exported.';
 };
-$('paperTab').onclick=()=>switchMode('paper');
-$('labTab').onclick=()=>switchMode('lab');
-$('chartTab').onclick=()=>switchMode('chart');
-for(const tab of [$('paperTab'),$('labTab'),$('chartTab')])tab.onkeydown=event=>{
+for(const name of TAB_NAMES)$(name+'Tab').onclick=()=>switchMode(name);
+for(const tab of TAB_NAMES.map(name=>$(name+'Tab')))tab.onkeydown=event=>{
+  if(event.altKey||event.ctrlKey||event.metaKey)return;
   if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){
-    event.preventDefault();const names=['paper','lab','chart'],i=names.indexOf(tab.id.replace('Tab',''));
-    const next=event.key==='Home'?'paper':event.key==='End'?'chart':names[(i+(event.key==='ArrowRight'?1:2))%3];
+    event.preventDefault();const names=TAB_NAMES,i=names.indexOf(tab.id.replace('Tab',''));
+    const next=event.key==='Home'?names[0]:event.key==='End'?names.at(-1):names[(i+(event.key==='ArrowRight'?1:names.length-1))%names.length];
     switchMode(next);$(next+'Tab').focus();
   }
 };
-$('labBase').innerHTML=PRESETS.map(p=>`<option>${p.name}</option>`).join('');
+$('labBase').innerHTML=[...VARIATIONS,...PRESETS].map(p=>`<option>${p.name}</option>`).join('');
 $('labBase').onchange=event=>{
-  const source=PRESETS.find(p=>p.name===event.target.value),p=editable(source);
+  const source=[...VARIATIONS,...PRESETS].find(p=>p.name===event.target.value),p=editable(source);
   p.parent=source.name;p.name=source.name+' variation';p.source='Derived from '+source.name;
   p.reference='Variation study';p.observation='Explore neighboring forms from this saved recipe.';
-  p.recipe='The published study remains available in the first tab.';
+  p.recipe=source.recipe;
   studies[presetIndex]=p;collections.lab.anchors[presetIndex]=structuredClone(p);collections.lab.controls[presetIndex]={...NEUTRAL};
   loadPreset(presetIndex);$('presets').innerHTML=studies.map(presetButton).join('');
 };

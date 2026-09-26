@@ -1,4 +1,4 @@
-import {generate,frameFor,svgFor} from './leaf.mjs?v=studio-1';
+import {generate,frameFor,svgFor} from './leaf.mjs?v=pole-pairs-2';
 export const FIGURE_ORDER=['Magnolia','Ginkgo','Date palm','American ash','Maple','Holly','Larkspur','Saw palmetto','Fig','Fern','Red oak','Walnut','Ground ivy','Sycamore','Buttercup','White oak'];
 
 // Compare silhouettes on one scale, sampling by boundary arc length rather than vertex count.

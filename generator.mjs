@@ -1,7 +1,9 @@
-import {generateGrowth,drawLeaf} from './growth.mjs?v=studio-1';
+import {generateGrowth,drawLeaf} from './growth.mjs?v=pole-pairs-2';
+import {generateCompound} from './compound.mjs?v=pole-pairs-2';
 export function createGenerator(limit=24) {
   const cache=new Map();
   return params=>{
+    if(params.compound)return generateCompound(params);
     const key=JSON.stringify([params.seedHalfWidth,params.trajectory,params.leftRightPosition,params.leftRightIntensity,params.stages,params.variant]);
     let geometry=cache.get(key);
     if(!geometry){

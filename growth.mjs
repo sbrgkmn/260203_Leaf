@@ -1,7 +1,7 @@
 // Port of the supplied Grasshopper Leaf / EXP / CON recursion.
 // Per-file differences are data (thresholds, stem rules, vector mode), not species branches.
 import {lerp,distance,displace} from './geometry.mjs';
-import {bladeBoundary,roundedPoint} from './blade.mjs?v=studio-1';
+import {bladeBoundary,roundedPoint} from './blade.mjs?v=pole-pairs-2';
 export {isSimple} from './geometry.mjs';
 export const STAGES=['Shoots','Blades'];
 export const MAX_POINTS=12000;

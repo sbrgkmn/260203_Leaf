@@ -1,4 +1,4 @@
-import {generate,frameFor,svgFor} from './leaf.mjs?v=studio-1';
+import {generate,frameFor,svgFor} from './leaf.mjs?v=pole-pairs-2';
 
 export function atlasRows(studies) {
   return studies.map((params,index) => {
