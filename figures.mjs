@@ -1,9 +1,9 @@
 import {developmentClockSvg} from './development-clock.mjs?v=6';
-import {bradyMatrixSvg} from './brady-matrix.mjs?v=9';
+import {bradyMatrixSvg,bradyGeneratedMatrixSvg} from './brady-matrix.mjs?v=10';
 import {developmentMatrixSvg} from './development-matrix.mjs?v=2';
 import {ontologySvg} from './ontology.mjs?v=trace-1';
 import {simpleGeometrySvg} from './geometry-simple.mjs?v=ec-simple-2';
-import {geometrySvg,continuationSvg,workedSvg,serialSvg,bradyReferenceSvg} from './diagrams.mjs?v=clean-garamond-2';
+import {geometrySvg,continuationSvg,workedSvg,redOakSilhouettesSvg,serialSvg,bradyReferenceSvg} from './diagrams.mjs?v=red-oak-2';
 import {bladeNodeStudySvg} from './blade-node-study.mjs?v=node-tags-1';
 import {bladeConfigurationSvg,bladeDevelopmentSvg} from './blade-configuration-diagrams.mjs?v=pole-pairs-2';
 import {atlasRows,atlasSvg} from './atlas.mjs';
@@ -12,22 +12,17 @@ import {PRESETS,studyParams} from './presets.mjs';
 import {VARIATIONS} from './variations.mjs';
 const entries=[
  ['development-clock','Ontology / developmental clock',()=>developmentClockSvg()],
+ ['brady-generated','Brady / generated sequences only',()=>bradyGeneratedMatrixSvg()],
  ['brady-matrix','Brady / 12-form developmental series',()=>bradyMatrixSvg()],
- ['development-matrix','Development × form variation',()=>developmentMatrixSvg()],
- ['ontology','Ontology / developmental cycles',()=>ontologySvg()],
  ['ec','E/C geometry',()=>simpleGeometrySvg()],
  ['trajectories','Radial / linear trajectories',()=>continuationSvg(.7,{expansionFirst:true})],
  ['blades','Eight blade surfaces',()=>bladeNodeStudySvg()],
  ['buttercup','Worked Buttercup',()=>workedSvg({filled:false,rounding:true})],
  ['buttercup-filled','Buttercup silhouettes',()=>workedSvg({filled:true,rounding:true})],
- ['five-lobed','Five-lobed treatments',()=>bladeConfigurationSvg({filled:true})],
- ['blade-development','Blade development',()=>bladeDevelopmentSvg({filled:true,profile:'ce'})],
- ['serial','Embryogenesis × ontogenesis',()=>serialSvg({count:12})],
+ ['red-oak-filled','Red oak silhouettes',()=>redOakSilhouettesSvg()],
  ['published','16 published sequences',()=>atlasSvg(atlasRows(PRESETS.map(studyParams)))],
  ['lab','Variation lab sequences',()=>atlasSvg(atlasRows(VARIATIONS.map(studyParams)))],
  ['chart','Development chart',()=>figureSvg(chartRows(PRESETS.map(studyParams),12),12)],
- ['parameters','E/C parameter families',()=>geometrySvg()],
- ['references','Brady reference comparison',()=>bradyReferenceSvg()],
 ];
 const $=id=>document.getElementById(id),cache=new Map();
 $('figure').innerHTML=entries.map(([id,name])=>`<option value="${id}">${name}</option>`).join('');
@@ -39,7 +34,7 @@ function render(){
  if(doc.querySelector('parsererror'))throw Error('Could not render this figure.');
  const svg=doc.documentElement;
  for(const node of svg.querySelectorAll('text')){
-  if(id==='development-clock'||id==='ontology'||id==='development-matrix'||id==='brady-matrix'){
+  if(id==='development-clock'||id==='ontology'||id==='development-matrix'||id==='brady-matrix'||id==='brady-generated'){
    if(!$('labels').checked&&/^\d{2}$/.test(node.textContent.trim()))node.remove();
    continue;
   }

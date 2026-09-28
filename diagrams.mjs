@@ -93,6 +93,19 @@ export function workedSvg(options={}){
   body+=txt(30,616,'The exact saved Buttercup recipe: 3 shoot cycles + 3 blade cycles. All frames share a fixed scale.',12);
   return documentSvg(1100,640,'Buttercup: twelve actual E/C operations in two phases',body);
 }
+export function redOakSilhouettesSvg(){
+ const params=getStudy('Red oak');
+ params.stages[1].cycles=2;
+ const {steps}=generate(params),frame=frameFor(steps);
+ let body='';
+ steps.forEach((step,i)=>{
+  const x=20+(i%6)*176,y=35+Math.floor(i/6)*260;
+  body+=txt(x+84,y,step.operation,14,'middle')+
+   nest(constructionSvg(step,steps[i-1],frame,{filled:true,rounding:true},`red-oak-${i}`),x,y+7,168)+
+   txt(x+84,y+197,String(i+1).padStart(2,'0'),13,'middle');
+ });
+ return documentSvg(1100,550,'Red oak silhouettes',body);
+}
 // Highlight the actual eligible frontier after the first E/C pair.
 function trajectoryChoiceSvg(step,frame,id){
   const {x,y,size}=frame,stroke=size/180;

@@ -78,3 +78,16 @@ export function bradyMatrixSvg(){
  body+=txt(30,1864,'Shared scale across all 144 forms. Source silhouettes are references, not fitted targets.',14,'start');
  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" aria-label="Brady embryogenesis by ontogenetic series"><rect width="${width}" height="${height}" fill="white"/><g fill="black" font-family="Garamond, serif">${body}</g></svg>`;
 }
+
+// Generated-only companion: retain the same data and row/operation numbering.
+export function bradyGeneratedMatrixSvg(){
+ let svg=bradyMatrixSvg();
+ svg=svg.replace(/<svg x="110"[\s\S]*?<\/svg>/g,'');
+ svg=svg.replace(/<text x="160"[^>]*>[\s\S]*?<\/text>/g,'');
+ svg=svg.replace(/<text x="(\d+)"/g,(match,x)=>`<text x="${Number(x)>=255?Number(x)-120:x}"`);
+ svg=svg.replace(/<svg x="(\d+)"/g,(match,x)=>`<svg x="${Number(x)-120}"`);
+ svg=svg.replace('x="1955"','x="1835"').replaceAll('H 2130','H 2010');
+ svg=svg.replaceAll('2160','2040');
+ svg=svg.replace('Source silhouettes are references, not fitted targets.','Generated E/C forms only; identical parameters to the reference matrix.');
+ return svg;
+}
