@@ -14,6 +14,12 @@ The reference strip is folded below the main chart. Its asymmetry remains visibl
 
 ## Blade surface lesson
 
+The primary lesson is `blade-node-study.mjs`. Its construction strip runs a controlled linear E/C recipe through two cycles, stopping after the second contraction (15 recursive points, five shoots). Curve controls are introduced afterwards. These layouts are authored post-C2 surface studies, not extra E/C operations or a claim that the original engine implies these finishes.
+
+All four treatments use four quadratic CVs per half-leaf, mirrored into a continuous blade with a natural tapered base. 01 is convex and rounded; 02 keeps pointed upper tips; 03 follows the supplied half-leaf sketch with one lateral pair and an anchored sinus; 04 rounds the contracted profile. Smooth joins use the midpoint of adjacent controls, giving identical quadratic derivatives. In 03 this removes the kink between CVs 3 and 4. The diagram shows only the right-half construction with a bold contour and pale control polygon. The top strip retains real E/C history separately from these authored surface finishes. Tests check smooth joins, mirroring, continuity, finite geometry and absence of crossings.
+
+The earlier five-lobed study remains in a folded secondary section:
+
 `blade-configurations.mjs` reduces Buttercup to two shoot cycles and no blade cycles: E/C/E/C establishes five positive poles. Four finishes independently pair the upper-tip and lower-node treatments: C/C rounded/rounded, E/C sharp/rounded, C/E rounded/sharp, and E/E sharp/sharp. All share identical control points and recursion. In C/E, two cubic arcs span the full lobe between exact lower nodes, meeting with a continuous tangent at the upper crest. This retains lobe height while rounding and filling its flanks. Adjoining node arcs collapse to those anchors to avoid overlapping segments. These E/C pair labels describe drawing treatments, not a change to the alternating growth operations. Existing saved recipes and lab samples retain their drawing behavior.
 
 The comparison and development plates reuse the Worked buttercup construction renderer, including inherited axes, pole markers and previous boundaries. Outline/fill views and two SVG exports support inspection. Earlier signed-bow and margin-depth studies remain in the source but are no longer the active Blade surfaces lesson.

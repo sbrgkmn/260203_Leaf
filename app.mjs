@@ -4,7 +4,7 @@ import { STAGES } from './growth.mjs?v=pole-pairs-2';
 import {VARIATIONS,NEUTRAL,MACRO_FIELDS,varyRecipe,neighboringVariations} from './variations.mjs?v=pole-pairs-2';
 import {studyParams} from './presets.mjs?v=studio-1';
 import {chartRows,figureSvg} from './figure-chart.mjs?v=pole-pairs-2';
-import {LEARNING_TABS,mountLearning} from './learning.mjs?v=pole-pairs-2';
+import {LEARNING_TABS,mountLearning} from './learning.mjs?v=node-tags-1';
 const showLearning=mountLearning();
 const TAB_NAMES=['paper','lab','chart',...LEARNING_TABS.map(([id])=>id)];
 const $ = id => document.getElementById(id);
@@ -309,3 +309,4 @@ $('chartExportPng').onclick=async()=>{
   finally{$('chartExportPng').disabled=false;}
 };
 loadPreset(0);
+switchMode('rules');

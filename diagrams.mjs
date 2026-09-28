@@ -104,29 +104,55 @@ function trajectoryChoiceSvg(step,frame,id){
   content+=step.edges.filter(e=>e.active).map(e=>line(e.a,e.b,'black',stroke,true)).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${-y-size} ${size} ${size}" width="800" height="800" role="img" aria-label="Eligible edges after the first E/C pair"><rect x="${x}" y="${-y-size}" width="${size}" height="${size}" fill="white"/>${content}</svg>`;
 }
-export function continuationSvg(cutoff=.7){
-  const rows=trajectoryStudies(cutoff),frame=frameFor(rows.flatMap(r=>r.steps));
-  let body=txt(30,34,'Radial and linear / choose which descendant continues',22)+txt(30,60,'One controlled recipe, two continuation rules. Black arrows mark edges eligible for the next E; gray edges rest.',12);
-  rows.forEach(({steps},row)=>{
-    const x=30+row*550;
-    body+=txt(x,102,row?'LINEAR / progress toward the terminal apex':'RADIAL / continue onto the lateral shoots',16);
-    body+=txt(x,127,row?'New branch pairs arise successively along the main axis.':'New shoots turn around the inherited lateral axes.',12);
-    body+=nest(trajectoryChoiceSvg(steps[1],frame,`choice-${row}`),x+120,140,260);
-    body+=txt(x,419,row?'Parallel branch pairs; each tier is 75% of the previous tier.':'The first E/C pair is shared; the continuation edge differs.',12);
+export function continuationSvg(cutoff=.7,{expansionFirst=false}={}){
+  const rows=trajectoryStudies(cutoff).map(r=>{
+    const params=structuredClone(r.params);
+    params.rounding=true;params.positiveWeight=1.7;params.negativeWeight=.5;
+    params.apices=undefined;params.sinuses=undefined;params.anchoredLobes=false;
+    const rule=params.stages[0];rule.rotation=75;
+    rule.positions=rule.positions.map((p,i)=>i%2?p:.34);
+    rule.intensities=rule.intensities.map((p,i)=>i%2?.56:p);
+    // Shape-specific teaching offsets: central radial branching and balanced tiers.
+    if(params.trajectory==='base')rule.positions[0]=.48;
+    else rule.intensities[0]*=.68;
+    return {params,...generate(params)};
   });
+  const frame=frameFor(rows.flatMap(r=>r.steps));
+  let body=txt(30,34,'From E/C operation to developmental trajectory',23)+txt(30,62,'Both paths alternate E and C. The difference is which descendant edge continues after contraction.',13);
+  body+=`<defs><marker id="trajectory-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="black"/></marker></defs>`;
   rows.forEach(({steps},row)=>{
-    const y=463+row*248;
+    const x=30+(expansionFirst?1-row:row)*550,last=steps.at(-1),size=365,px=x+105,py=150;
+    body+=txt(x,106,row?'LINEAR / toward the terminal apex':'RADIAL / around the lateral shoots',18);
+    body+=txt(x,132,row?'Expansive trajectory / fern-like arrangement':'Contractive trajectory / palmate arrangement',12);
+    body+=nest(constructionSvg(last,undefined,frame,{filled:true,rounding:true},`trajectory-final-${row}`),px,py,size);
+    const project=p=>({x:px+(p.x-frame.x)/frame.size*size,y:py+(-p.y+frame.y+frame.size)/frame.size*size});
+    const apex=project(last.points.find(p=>p.id==='apex'));
+    const bounds=last.surfaces.flat().map(project);
+    const left=Math.min(...bounds.map(p=>p.x))-32;
+    const bottom=Math.max(...bounds.map(p=>p.y));
+    const top=apex.y-18;
+    // A single envelope arc communicates direction; computation indices live below.
+    const d=row?`M ${left+12} ${bottom-28} C ${left-15} ${bottom-170}, ${left-5} ${top+30}, ${apex.x-12} ${top}`:
+      `M ${apex.x-12} ${top} C ${left-15} ${top+10}, ${left-35} ${bottom-150}, ${left+35} ${bottom-50}`;
+    body+=`<path d="${d}" fill="none" stroke="#333" stroke-width="1.25" stroke-dasharray="5 5" marker-end="url(#trajectory-arrow)"/>`;
+    body+=txt(apex.x+12,top+4,row?'toward tip':'from tip',12);
+    body+=txt(x,545,row?'Successive branch pairs advance toward the apex.':'Successive shoots turn outward and toward the lower lobes.',12);
+    body+=txt(x,567,row?'Continue the tip-side descendant; the other edge rests.':'Continue the lateral-side descendant; the other edge rests.',12);
+  });
+  body+=txt(30,612,'The same E/C pair, followed along two different paths',18);
+  (expansionFirst?[...rows].reverse():rows).forEach(({steps},row)=>{
+    const y=652+row*248;
     body+=txt(30,y,row?'02 / LINEAR DEVELOPMENT':'01 / RADIAL DEVELOPMENT',15);
     steps.forEach((s,i)=>{
       const x=20+i*176;
-      body+=txt(x+84,y+25,s.operation,14,'middle')+nest(constructionSvg(s,steps[i-1],frame,{filled:true},`continuation-${row}-${i}`),x,y+32,168);
+      body+=txt(x+84,y+25,s.operation,14,'middle')+nest(constructionSvg(s,steps[i-1],frame,{filled:true,rounding:true},`continuation-${row}-${i}`),x,y+32,168);
       body+=txt(x+84,y+214,String(i+1).padStart(2,'0'),13,'middle');
     });
   });
-  body+=txt(30,961,`E edge-length cutoff: ${cutoff.toFixed(2)}. Larger cutoffs stop shorter descendants; completed tiers keep their proportions.`,12);
-  body+=txt(30,984,'Study recipe: axis-aligned E vectors, fixed positions and C strength; E strengths compensate for changing edge lengths.',12);
-  body+=txt(30,1007,'The two rows share all numeric settings and scale. Only the continuation rule changes. No blade cycles are added.',12);
-  return documentSvg(1100,1030,'Radial and proportional linear E/C trajectories with continuing edges highlighted',body);
+  body+=txt(30,1150,`E edge-length cutoff: ${cutoff.toFixed(2)}. The numbered frames below show the computed E/C order.`,12);
+  body+=txt(30,1174,'Figure 2 informs the direction comparison. These controlled E/C studies are not reconstructions of the photographed leaves.',12);
+  body+=txt(30,1198,'Shared E/C framework and scale; radial origin centered, first linear expansion reduced. Rounding is applied after growth.',12);
+  return documentSvg(1100,1220,'Radial and linear development with smooth envelope arrows and E/C steps',body);
 }
 export function smoothingSvg(){
   let body=txt(30,36,'Round the boundary; retain the recursive poles',22);

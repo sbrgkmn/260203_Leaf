@@ -41,7 +41,7 @@ test('choice arrows identify different eligible descendants after the shared fir
   assert.deepEqual(targets(radial),['L:E','R:E']);
   assert.deepEqual(targets(linear),['apex','apex']);
   const svg=continuationSvg();
-  assert.ok(svg.includes('75%'));
-  assert.ok(svg.includes('marker-end="url(#choice-0-arrow)"'));
-  assert.ok(svg.includes('marker-end="url(#choice-1-arrow)"'));
+  assert.ok(svg.includes('from tip'));
+  assert.ok(svg.includes('toward tip'));
+  assert.equal((svg.match(/marker-end="url\(#trajectory-arrow\)"/g)||[]).length,2);
 });
