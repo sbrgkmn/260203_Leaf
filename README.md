@@ -61,6 +61,8 @@ These are recovered **saved definitions**, not a claim that every file is the ex
 
 ## Clean figures and developmental studies
 
-Open **All clean figures** on the original studio page for direct links to all 12 diagrams, including E/C geometry, blade surfaces, development charts, the Brady 12-by-12 matrix, and the developmental clock. Each clean figure supports SVG export and printing. The clock uses the Brady matrix forms, with twelve mature leaves around its perimeter, selected intermediate stages, and four counterclockwise quadrant arrows. The stemming end of the Brady series includes progressive stalk elongation.
+Open **All clean figures** on the original studio page for direct links to all 13 diagrams, including E/C geometry, blade surfaces, development charts, the Brady 12-by-12 matrix, and the developmental clock. Each clean figure supports SVG export and printing. The clock uses the Brady matrix forms, with twelve mature leaves around its perimeter, selected intermediate stages, and four counterclockwise quadrant arrows. The stemming end of the Brady series includes progressive stalk elongation.
 
 The clean gallery also includes **Red oak silhouettes**, with twelve E/C operations, and **Brady / generated sequences only**, which retains the 12-by-12 generated matrix without the source silhouette column. Superseded figure entries have been removed from the gallery navigation.
+
+**Ontology / formative activities** adds a leaf-free, monochrome diagram with Intensity and Polarity axes, four formative activities, opposing embryogenesis and ontogenesis loops, and reference-style annotations. It is accessible from the clean figure gallery and supports SVG export.

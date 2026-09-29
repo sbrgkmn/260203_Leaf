@@ -1,3 +1,4 @@
+import {ontologyClockSvg} from './ontology-clock.mjs';
 import {developmentClockSvg} from './development-clock.mjs?v=6';
 import {bradyMatrixSvg,bradyGeneratedMatrixSvg} from './brady-matrix.mjs?v=10';
 import {developmentMatrixSvg} from './development-matrix.mjs?v=2';
@@ -11,6 +12,7 @@ import {chartRows,figureSvg} from './figure-chart.mjs';
 import {PRESETS,studyParams} from './presets.mjs';
 import {VARIATIONS} from './variations.mjs';
 const entries=[
+ ['ontology-clock','Ontology / formative activities',()=>ontologyClockSvg()],
  ['development-clock','Ontology / developmental clock',()=>developmentClockSvg()],
  ['brady-generated','Brady / generated sequences only',()=>bradyGeneratedMatrixSvg()],
  ['brady-matrix','Brady / 12-form developmental series',()=>bradyMatrixSvg()],
@@ -34,7 +36,7 @@ function render(){
  if(doc.querySelector('parsererror'))throw Error('Could not render this figure.');
  const svg=doc.documentElement;
  for(const node of svg.querySelectorAll('text')){
-  if(id==='development-clock'||id==='ontology'||id==='development-matrix'||id==='brady-matrix'||id==='brady-generated'){
+  if(id==='ontology-clock'||id==='development-clock'||id==='ontology'||id==='development-matrix'||id==='brady-matrix'||id==='brady-generated'){
    if(!$('labels').checked&&/^\d{2}$/.test(node.textContent.trim()))node.remove();
    continue;
   }
