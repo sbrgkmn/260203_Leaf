@@ -1,4 +1,4 @@
-import {simpleGeometrySvg} from './geometry-simple.mjs?v=ec-simple-2';
+import {simpleGeometrySvg} from './geometry-simple.mjs?v=ec-vertical-1';
 import {bladeNodeStudySvg} from './blade-node-study.mjs?v=node-tags-1';
 import {bladeConfigurationSvg,bladeDevelopmentSvg} from './blade-configuration-diagrams.mjs?v=pole-pairs-2';
 import {BLADE_CONFIGURATIONS} from './blade-configurations.mjs?v=pole-pairs-2';

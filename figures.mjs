@@ -3,7 +3,7 @@ import {developmentClockSvg} from './development-clock.mjs?v=6';
 import {bradyMatrixSvg,bradyGeneratedMatrixSvg} from './brady-matrix.mjs?v=10';
 import {developmentMatrixSvg} from './development-matrix.mjs?v=2';
 import {ontologySvg} from './ontology.mjs?v=trace-1';
-import {simpleGeometrySvg} from './geometry-simple.mjs?v=ec-simple-2';
+import {simpleGeometrySvg} from './geometry-simple.mjs?v=ec-vertical-1';
 import {geometrySvg,continuationSvg,workedSvg,redOakSilhouettesSvg,serialSvg,bradyReferenceSvg} from './diagrams.mjs?v=red-oak-2';
 import {bladeNodeStudySvg} from './blade-node-study.mjs?v=node-tags-1';
 import {bladeConfigurationSvg,bladeDevelopmentSvg} from './blade-configuration-diagrams.mjs?v=pole-pairs-2';
@@ -62,7 +62,7 @@ function render(){
  }
  svg.append(rootGroup);
  const caption=(x,y,label)=>{const t=doc.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',x);t.setAttribute('y',y);t.setAttribute('text-anchor','middle');t.setAttribute('font-size','22');t.setAttribute('font-family',font);t.textContent=label;rootGroup.append(t);};
- if(id==='ec'){caption(275,395,'expansion');caption(825,395,'contraction');}
+ if(id==='ec'){caption(145,350,'expansion');caption(970,350,'contraction');}
  if(id==='trajectories'){caption(305,555,'expansion');caption(855,555,'contraction');}
  svg.setAttribute('aria-label',name);$('drawing').replaceChildren(document.importNode(svg,true));
  // Trim outer caption space while retaining the native drawing geometry.
