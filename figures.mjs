@@ -1,6 +1,6 @@
 import {ontologyClockSvg} from './ontology-clock.mjs';
 import {developmentClockSvg} from './development-clock.mjs?v=6';
-import {bradyMatrixSvg,bradyGeneratedMatrixSvg} from './brady-matrix.mjs?v=10';
+import {bradyMatrixSvg,bradyGeneratedMatrixSvg} from './brady-matrix.mjs?v=a4-12';
 import {developmentMatrixSvg} from './development-matrix.mjs?v=2';
 import {ontologySvg} from './ontology.mjs?v=trace-1';
 import {simpleGeometrySvg} from './geometry-simple.mjs?v=ec-vertical-1';
@@ -67,7 +67,10 @@ function render(){
  svg.setAttribute('aria-label',name);$('drawing').replaceChildren(document.importNode(svg,true));
  // Trim outer caption space while retaining the native drawing geometry.
  const live=$('drawing').firstElementChild,group=[...live.children].find(n=>n.tagName.toLowerCase()==='g');
- if(group){const b=group.getBBox();if(b.width&&b.height){const pad=18;live.setAttribute('viewBox',`${b.x-pad} ${b.y-pad} ${b.width+pad*2} ${b.height+pad*2}`);live.setAttribute('width',b.width+pad*2);live.setAttribute('height',b.height+pad*2);}}
+ if(group&&!live.hasAttribute('data-publication')){const b=group.getBBox();if(b.width&&b.height){const pad=18;live.setAttribute('viewBox',`${b.x-pad} ${b.y-pad} ${b.width+pad*2} ${b.height+pad*2}`);live.setAttribute('width',b.width+pad*2);live.setAttribute('height',b.height+pad*2);}}
+ let printStyle=document.getElementById('publication-print');
+ if(!printStyle){printStyle=document.createElement('style');printStyle.id='publication-print';document.head.append(printStyle);}
+ printStyle.textContent=id==='brady-generated'?'@page{size:A4 portrait;margin:10mm}@media print{html,body{margin:0}main{overflow:visible}main>svg{width:190mm;height:190mm;max-width:none;break-inside:avoid}}':'';
  history.replaceState(null,'',`?figure=${id}`);
 }
 $('figure').onchange=render;$('labels').onchange=render;

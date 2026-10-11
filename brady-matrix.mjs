@@ -4,10 +4,10 @@ import {generate,frameFor,svgFor} from './leaf.mjs?v=pole-pairs-2';
 // One continuous morph trajectory, sampled uniformly for all twelve rows.
 // Values are authored controls, not a fitted reconstruction of the source.
 const MORPH_KEYS=[
- {t:0,shootE:.78,shootC:.78,rotation:55,bladeRotation:38,lateExpansion:.50,position:.18,bladeE:.48,bladeC:.30,round:.7},
- {t:3/11,shootE:.95,shootC:.86,rotation:65,bladeRotation:46,lateExpansion:.60,position:.14,bladeE:.58,bladeC:.38,round:1.1},
- {t:6/11,shootE:1,shootC:.90,rotation:74,bladeRotation:54,lateExpansion:.78,position:.11,bladeE:.56,bladeC:.46,round:1.65},
- {t:1,shootE:.53,shootC:.995,rotation:54,bladeRotation:40,lateExpansion:.70,position:.08,bladeE:.16,bladeC:.96,round:2.2},
+ {t:0,shootE:.78,shootC:.72,firstC:.84,rotation:55,bladeRotation:45,lateExpansion:.72,position:.18,bladeE:.85,bladeC:.66,bladeStem:.15,stalk:4.5,round:1.3},
+ {t:3/11,shootE:.94,shootC:.82,firstC:.91,rotation:62,bladeRotation:48,lateExpansion:.86,position:.14,bladeE:.98,bladeC:.82,bladeStem:.32,stalk:3.3,round:1.45},
+ {t:6/11,shootE:1,shootC:.87,firstC:.94,rotation:68,bladeRotation:52,lateExpansion:.95,position:.123,bladeE:1,bladeC:1,bladeStem:.606,stalk:1.8,round:1.6},
+ {t:1,shootE:.53,shootC:.98,firstC:.96,rotation:52,bladeRotation:40,lateExpansion:.60,position:.08,bladeE:.35,bladeC:1.25,bladeStem:.606,stalk:.3,round:1.9},
 ];
 export function bradyMorphControls(t){
  t=Math.max(0,Math.min(1,t));
@@ -21,13 +21,17 @@ export function bradyMorphParams(t){
  params.leftRightPosition=.5;params.leftRightIntensity=.5;
  params.positiveWeight=m.round;params.negativeWeight=.65+.6*t;
  const [shoot,blade]=params.stages;
- // Fixed recursion depth and eligibility avoid threshold-driven jumps.
- for(const stage of params.stages){stage.cycles=3;stage.minExpansionLength=0;stage.minContractionLength=0;stage.expansion.intensity=1;stage.contraction.intensity=1;}
+ // Keep twelve operations and seven primary shoot poles. Buttercup's blade
+ // cutoff lets short edges rest instead of subdividing every margin indefinitely.
+ for(const stage of params.stages){stage.cycles=3;stage.expansion.intensity=1;stage.contraction.intensity=1;}
+ shoot.minExpansionLength=0;shoot.minContractionLength=0;
+ blade.minExpansionLength*=m.shootE;
  blade.rotation=m.bladeRotation;
  shoot.rotation=m.rotation;shoot.positions[0]=m.position;
- shoot.intensities=shoot.intensities.map((v,g)=>g%2?(g===1?.94:m.shootC):v*m.shootE);
- blade.intensities=[m.bladeE,m.bladeC,m.bladeE*m.lateExpansion,m.bladeC+.02,m.bladeE*.66,Math.min(.99,m.bladeC+.04)];
- blade.firstStemIntensity=.3;blade.stemIntensity=.3;
+ shoot.intensities=shoot.intensities.map((v,g)=>g%2?(g===1?m.firstC:m.shootC):v*m.shootE);
+ // Modulate the saved generation-dependent schedule, retaining its E/C balance.
+ blade.intensities=blade.intensities.map((v,g)=>g%2?Math.min(.98,v*m.bladeC):v*m.bladeE*Math.pow(m.lateExpansion,g/2));
+ blade.firstStemIntensity=m.bladeStem;blade.stemIntensity=m.bladeStem;
  params.name='Worked Buttercup / continuous morph';
  return params;
 }
@@ -37,11 +41,10 @@ export function bradyMatrixData(){
   const recipe=bradyRecipe(position),t=index/11,params=bradyMorphParams(t);
   const row={...recipe,params,controls:bradyMorphControls(t),...generate(params)};
   // Separate basal elongation from the unchanged E/C blade construction.
-  // The stemming end of the series gains a slender, progressive petiole.
-  if(index===0)row.steps=row.steps.map((step,i)=>{
-   const length=2.4*i/11;
-   if(!length)return step;
-   const stalk=[{x:-.075,y:.12},{x:.075,y:.12},{x:.045,y:-length},{x:-.045,y:-length}];
+  // Stalk length varies continuously along the series and grows within each row.
+  row.steps=row.steps.map((step,i)=>{
+   const length=row.controls.stalk*(i+1)/12;
+   const stalk=[{x:-.10,y:.12},{x:.10,y:.12},{x:.065,y:-length},{x:-.065,y:-length}];
    return {...step,surfaces:[...step.surfaces,stalk]};
   });
   return {...row,index,cells:row.steps.map((step,i)=>({step,index:i+1}))};
@@ -81,13 +84,26 @@ export function bradyMatrixSvg(){
 
 // Generated-only companion: retain the same data and row/operation numbering.
 export function bradyGeneratedMatrixSvg(){
- let svg=bradyMatrixSvg();
- svg=svg.replace(/<svg x="110"[\s\S]*?<\/svg>/g,'');
- svg=svg.replace(/<text x="160"[^>]*>[\s\S]*?<\/text>/g,'');
- svg=svg.replace(/<text x="(\d+)"/g,(match,x)=>`<text x="${Number(x)>=255?Number(x)-120:x}"`);
- svg=svg.replace(/<svg x="(\d+)"/g,(match,x)=>`<svg x="${Number(x)-120}"`);
- svg=svg.replace('x="1955"','x="1835"').replaceAll('H 2130','H 2010');
- svg=svg.replaceAll('2160','2040');
- svg=svg.replace('Source silhouettes are references, not fitted targets.','Generated E/C forms only; identical parameters to the reference matrix.');
- return svg;
+ // A4 portrait, 10 mm margins: 10 drawing units per mm, 30 units ≈ 8.5 pt.
+ // Same rows, steps and shared frame as the reference matrix; only layout changes.
+ const rows=bradyMatrixData(),left=82,pitch=150,top=100,rowHeight=150;
+ const label=(x,y,s)=>`<text x="${x}" y="${y}" text-anchor="middle" font-size="30">${s}</text>`;
+ let body='';
+ for(let c=0;c<12;c++){
+  body+=label(left+c*pitch+72,79,c%2?'C':'E');
+ }
+ rows.forEach((row,r)=>{
+  const y=top+r*rowHeight;
+  body+=label(30,y+80,String(r+1).padStart(2,'0'));
+  row.cells.forEach((cell,c)=>{
+   let leaf=svgFor(cell.step,{...row.params,veins:true,points:false,frontier:false},row.frame,`brady-print-${r}-${c}`)
+    .replace('<svg ',`<svg x="${left+c*pitch}" y="${y}" `)
+    .replace('width="800" height="800"','width="144" height="144"')
+    .replace(/<rect[^>]*fill="white"\/>/,'');
+   // Strengthen veins without erasing the narrow terminal forms.
+   leaf=leaf.replace(/stroke="white" stroke-width="([^"]+)"/g,(_,weight)=>`stroke="white" stroke-width="${Math.min(Number(weight)*2,row.frame.size*.45/144)}"`);
+   body+=leaf;
+  });
+ });
+ return `<svg xmlns="http://www.w3.org/2000/svg" width="190mm" height="190mm" viewBox="0 0 1900 1900" data-publication="a4" aria-label="Generated Brady series: rows 01–12, development steps 01–12 across"><rect width="1900" height="1900" fill="white"/><g fill="black" font-family="Garamond, serif">${body}</g></svg>`;
 }
