@@ -1,36 +1,42 @@
 import {buttercupSequence} from './diagrams.mjs?v=clean-garamond-2';
 import {bradyRecipe,BRADY_REFERENCE} from './brady-series.mjs?v=pole-pairs-2';
-import {generate,frameFor,svgFor} from './leaf.mjs?v=pole-pairs-2';
+import {generate,frameFor,svgFor} from './leaf.mjs?v=fixed-poles-1';
 // One continuous morph trajectory, sampled uniformly for all twelve rows.
 // Values are authored controls, not a fitted reconstruction of the source.
 const MORPH_KEYS=[
- {t:0,shootE:.78,shootC:.72,firstC:.84,rotation:55,bladeRotation:45,lateExpansion:.72,position:.18,bladeE:.85,bladeC:.66,bladeStem:.15,stalk:4.5,round:1.3},
- {t:3/11,shootE:.94,shootC:.82,firstC:.91,rotation:62,bladeRotation:48,lateExpansion:.86,position:.14,bladeE:.98,bladeC:.82,bladeStem:.32,stalk:3.3,round:1.45},
- {t:6/11,shootE:1,shootC:.87,firstC:.94,rotation:68,bladeRotation:52,lateExpansion:.95,position:.123,bladeE:1,bladeC:1,bladeStem:.606,stalk:1.8,round:1.6},
- {t:1,shootE:.53,shootC:.98,firstC:.96,rotation:52,bladeRotation:40,lateExpansion:.60,position:.08,bladeE:.35,bladeC:1.25,bladeStem:.606,stalk:.3,round:1.9},
+ {t:0,shootE:.78,shootC:.76,rotation:55,bladeRotation:45,position:.18,bladeE:.90,bladeC:.30,bladeStem:.05,stalk:4.5,round:1.3},
+ {t:3/11,shootE:.94,shootC:.92,rotation:62,bladeRotation:48,position:.14,bladeE:.98,bladeC:.65,bladeStem:.22,stalk:3.3,round:1.45},
+ {t:6/11,shootE:1,shootC:1,rotation:68,bladeRotation:52,position:.123,bladeE:1,bladeC:1,bladeStem:.606,stalk:1.8,round:1.6},
+ {t:1,shootE:.53,shootC:1.04,rotation:52,bladeRotation:40,position:.08,bladeE:.35,bladeC:1.25,bladeStem:.606,stalk:.3,round:1.9},
 ];
 export function bradyMorphControls(t){
  t=Math.max(0,Math.min(1,t));
  const hi=MORPH_KEYS.findIndex(k=>k.t>=t);
  const a=MORPH_KEYS[Math.max(0,hi-1)],b=MORPH_KEYS[hi];
  const u=b.t===a.t?0:(t-a.t)/(b.t-a.t),blend=u*u*(3-2*u);
- return Object.fromEntries(Object.keys(a).filter(k=>k!=='t').map(k=>[k,a[k]+(b[k]-a[k])*blend]));
+ const controls=Object.fromEntries(Object.keys(a).filter(k=>k!=='t').map(k=>[k,a[k]+(b[k]-a[k])*blend]));
+ // Vertical-only reduction of subordinate growth after the seventh form.
+ const v=Math.max(0,(t-6/11)/(5/11)),reduction=v*v*(3-2*v);
+ // Retain subordinate shoots at reduced amplitude; only the smallest blade
+ // edges become dormant, preserving articulation in the terminal forms.
+ return {...controls,secondaryExpansion:1-.72*reduction,shootCutoff:2*reduction,bladeCutoff:4*reduction};
 }
 export function bradyMorphParams(t){
  const params=structuredClone(buttercupSequence().params),m=bradyMorphControls(t);
  params.leftRightPosition=.5;params.leftRightIntensity=.5;
  params.positiveWeight=m.round;params.negativeWeight=.65+.6*t;
  const [shoot,blade]=params.stages;
- // Keep twelve operations and seven primary shoot poles. Buttercup's blade
- // cutoff lets short edges rest instead of subdividing every margin indefinitely.
+ // Keep twelve operations; later rows leave subordinate branches dormant.
  for(const stage of params.stages){stage.cycles=3;stage.expansion.intensity=1;stage.contraction.intensity=1;}
- shoot.minExpansionLength=0;shoot.minContractionLength=0;
- blade.minExpansionLength*=m.shootE;
+ shoot.minExpansionLength=m.shootCutoff;shoot.minContractionLength=0;
+ blade.minExpansionLength=3*m.shootE+m.bladeCutoff;
  blade.rotation=m.bladeRotation;
  shoot.rotation=m.rotation;shoot.positions[0]=m.position;
- shoot.intensities=shoot.intensities.map((v,g)=>g%2?(g===1?m.firstC:m.shootC):v*m.shootE);
- // Modulate the saved generation-dependent schedule, retaining its E/C balance.
- blade.intensities=blade.intensities.map((v,g)=>g%2?Math.min(.98,v*m.bladeC):v*m.bladeE*Math.pow(m.lateExpansion,g/2));
+ // A row is one recipe: apply its E/C multipliers to the same saved schedule.
+ // A fixed row-level secondary-growth factor applies to later branch orders;
+ // the recipe is never interpolated or changed between displayed snapshots.
+ shoot.intensities=shoot.intensities.map((v,g)=>v*(g%2?m.shootC:m.shootE*(g>=2?m.secondaryExpansion:1)));
+ blade.intensities=blade.intensities.map((v,g)=>v*(g%2?m.bladeC:m.bladeE*(g>=2?m.secondaryExpansion:1)));
  blade.firstStemIntensity=m.bladeStem;blade.stemIntensity=m.bladeStem;
  params.name='Worked Buttercup / continuous morph';
  return params;
@@ -41,9 +47,9 @@ export function bradyMatrixData(){
   const recipe=bradyRecipe(position),t=index/11,params=bradyMorphParams(t);
   const row={...recipe,params,controls:bradyMorphControls(t),...generate(params)};
   // Separate basal elongation from the unchanged E/C blade construction.
-  // Stalk length varies continuously along the series and grows within each row.
-  row.steps=row.steps.map((step,i)=>{
-   const length=row.controls.stalk*(i+1)/12;
+  // Stalk length is a fixed row-level attachment, interpolated only vertically.
+  row.steps=row.steps.map(step=>{
+   const length=row.controls.stalk;
    const stalk=[{x:-.10,y:.12},{x:.10,y:.12},{x:.065,y:-length},{x:-.065,y:-length}];
    return {...step,surfaces:[...step.surfaces,stalk]};
   });

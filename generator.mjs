@@ -1,4 +1,4 @@
-import {generateGrowth,drawLeaf} from './growth.mjs?v=pole-pairs-2';
+import {generateGrowth,drawLeaf} from './growth.mjs?v=fixed-poles-1';
 import {generateCompound} from './compound.mjs?v=pole-pairs-2';
 export function createGenerator(limit=24) {
   const cache=new Map();

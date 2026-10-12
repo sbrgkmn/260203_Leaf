@@ -1,6 +1,6 @@
 import {ontologyClockSvg} from './ontology-clock.mjs';
 import {developmentClockSvg} from './development-clock.mjs?v=6';
-import {bradyMatrixSvg,bradyGeneratedMatrixSvg} from './brady-matrix.mjs?v=a4-12';
+import {bradyMatrixSvg,bradyGeneratedMatrixSvg} from './brady-matrix.mjs?v=short-shoots-1';
 import {developmentMatrixSvg} from './development-matrix.mjs?v=2';
 import {ontologySvg} from './ontology.mjs?v=trace-1';
 import {simpleGeometrySvg} from './geometry-simple.mjs?v=ec-vertical-1';

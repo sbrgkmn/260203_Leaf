@@ -1,4 +1,4 @@
-import {createGenerator} from './generator.mjs?v=pole-pairs-2';
+import {createGenerator} from './generator.mjs?v=fixed-poles-1';
 export {PRESETS} from './presets.mjs?v=studio-1';
 export {lerp,distance,displace} from './geometry.mjs';
 export const generate=createGenerator();
